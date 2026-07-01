@@ -20,9 +20,11 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-# Import our tools directly to run them locally in the UI
-from event_marketing_agent.tools.budget_tools import recommend_channels_and_allocate_budget
-from event_marketing_agent.tools.compliance_tools import evaluate_campaign_risks
+import asyncio
+import json
+from google.adk import Context, Event
+from google.adk.events import RequestInput
+from event_marketing_agent.agent import root_agent
 
 # Page styling and header
 st.set_page_config(
@@ -278,49 +280,80 @@ if 'risk_result' not in st.session_state:
 if 'assets' not in st.session_state:
     st.session_state.assets = None
 
-# Run the simulation workflow when triggered
-if generate_clicked or st.session_state.reallocated:
-    with st.status("Event Marketing Director: Orchestrating agent workflow...", expanded=True) as status:
-        st.write("🔍 **[Director] Analyzing event brief goals...**")
+# Setup Mock Session and Invocation Context
+class MockSession:
+    def __init__(self):
+        self.id = "streamlit-session"
+        self.state = {}
+        self.events = []
+
+    def model_copy(self, **kwargs):
+        return self
+
+class MockInvocationContext:
+    def __init__(self, session):
+        self.session = session
+        self.invocation_id = "streamlit-invocation"
+        self.branch = None
+        self.isolation_scope = None
+        self._event_queue = asyncio.Queue()
+        self.end_invocation = False
+
+    def model_copy(self, **kwargs):
+        return self
+
+    async def _enqueue_event(self, event):
+        self.session.events.append(event)
+
+async def run_workflow_stream(brief_input, user_response_event=None):
+    if "workflow_session" not in st.session_state:
+        st.session_state.workflow_session = MockSession()
+    session = st.session_state.workflow_session
+    
+    if user_response_event is not None:
+        session.events.append(user_response_event)
+        
+    ctx = Context(MockInvocationContext(session=session))
+    
+    async for event in root_agent.run(ctx=ctx, node_input=brief_input):
+        node_path = event.node_info.path if event.node_info else ''
+        if 'parse_brief' in node_path:
+            st.write("🔍 **[Director Agent] Parsing campaign brief parameters...**")
+        elif 'goal_analysis' in node_path:
+            st.write("📈 **[Director Agent] Analyzing event goals and calculating target limits...**")
+        elif 'run_data_budget_agent' in node_path:
+            st.write("📊 **[Data & Budget Agent] Recommending channels and calculating budget allocation...**")
+        elif 'run_creative_studio_agent' in node_path:
+            st.write("🎨 **[Creative Studio Agent] Crafting campaign headlines and copywriting copy assets...**")
+        elif 'run_risk_compliance_agent' in node_path:
+            st.write("⚠️ **[Risk & Compliance Agent] Auditing plan for budget and shortfall compliance...**")
+        elif 'adjust_brief_and_reallocate' in node_path:
+            st.write("🔄 **[Director Agent] Re-routing to Data & Budget Agent with optimization instructions...**")
         time.sleep(0.5)
-        
-        st.write("📊 **[Data & Budget Agent] Recommending channels and calculating budget allocation...**")
-        time.sleep(0.6)
-        db_res = recommend_channels_and_allocate_budget(
-            event_type=event_type,
-            target_audience=target_audience,
-            marketing_budget=marketing_budget,
-            registration_goal=registration_goal,
-            apply_optimization=st.session_state.optimized
-        )
-        allocations_res = db_res["allocations"]
-        summary_res = db_res["summary"]
-        
-        st.write("🎨 **[Creative Studio Agent] Crafting campaign headlines and copywriting copy assets...**")
-        time.sleep(0.6)
-        channels_res = [a["channel"] for a in allocations_res]
-        assets_res = mock_asset_generation(event_name, event_type, theme, target_audience, channels_res)
-        
-        st.write("⚠️ **[Risk & Compliance Agent] Auditing plans for budget and shortfall compliance...**")
-        time.sleep(0.6)
-        risk_res = evaluate_campaign_risks(
-            event_name=event_name,
-            event_type=event_type,
-            target_audience=target_audience,
-            marketing_budget=marketing_budget,
-            registration_goal=registration_goal,
-            allocations=allocations_res,
-            summary=summary_res
-        )
-        
-        # Save results to session state
-        st.session_state.db_result = db_res
-        st.session_state.risk_result = risk_res
-        st.session_state.assets = assets_res
-        st.session_state.generated = True
-        st.session_state.reallocated = False
-        
+
+brief_payload = {
+    'event_name': event_name,
+    'event_type': event_type,
+    'location': location,
+    'target_audience': target_audience,
+    'marketing_budget': marketing_budget,
+    'registration_goal': registration_goal,
+    'theme': theme
+}
+
+if generate_clicked:
+    # Clear session to start fresh
+    st.session_state.workflow_session = MockSession()
+    st.session_state.optimized = False
+    st.session_state.approved = False
+    st.session_state.reallocated = False
+    
+    with st.status("Event Marketing Director: Orchestrating agent workflow...", expanded=True) as status:
+        asyncio.run(run_workflow_stream(brief_payload))
         status.update(label="Campaign Plan Generated successfully!", state="complete", expanded=False)
+        
+    st.session_state.generated = True
+    st.rerun()
 
 # Check if we should render results or display the welcome page
 if not st.session_state.generated:
@@ -371,13 +404,15 @@ if not st.session_state.generated:
     # Halt execution here to avoid rendering empty charts/results below
     st.stop()
 
-# Retrieve results from state for rendering
-db_result = st.session_state.db_result
-risk_result = st.session_state.risk_result
-assets = st.session_state.assets
+# Retrieve results from persistent session state
+if st.session_state.generated:
+    session = st.session_state.workflow_session
+    db_result = session.state.get("data_budget_results", {})
+    risk_result = session.state.get("risk_assessment_results", {})
+    assets = session.state.get("creative_assets", {})
 
-allocations = db_result["allocations"]
-summary = db_result["summary"]
+    allocations = db_result.get("allocations", [])
+    summary = db_result.get("summary", {})
 
 # DISPLAY DASHBOARD CONTENT
 # Section 1: Executive KPI Cards
@@ -578,18 +613,75 @@ else:
         
         with app_col1:
             if st.button("👍 Approve Plan", use_container_width=True):
-                st.session_state.approved = True
-                st.rerun()
+                # Extract last event interrupt ID
+                session = st.session_state.workflow_session
+                last_ev = session.events[-1]
+                interrupt_id = None
+                if last_ev.content and last_ev.content.parts:
+                    for part in last_ev.content.parts:
+                        if part.function_call and part.function_call.name == "adk_request_input":
+                            interrupt_id = part.function_call.id
+                            break
+                if interrupt_id:
+                    response_event = Event(
+                        author="user",
+                        invocation_id=last_ev.invocation_id,
+                        content={
+                            "role": "user",
+                            "parts": [
+                                {
+                                    "function_response": {
+                                        "name": "adk_request_input",
+                                        "id": interrupt_id,
+                                        "response": {
+                                            "result": json.dumps({"decision": "approve"})
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    )
+                    with st.status("Event Marketing Director: Processing approval...", expanded=True) as status:
+                        asyncio.run(run_workflow_stream(brief_payload, response_event))
+                        status.update(label="Campaign Plan Approved!", state="complete", expanded=False)
+                    st.session_state.approved = True
+                    st.rerun()
                 
         with app_col2:
             if st.button("⚙️ Apply Optimization & Reallocate", use_container_width=True):
-                st.session_state.optimized = True
-                st.session_state.reallocated = True
-                st.rerun()
+                session = st.session_state.workflow_session
+                last_ev = session.events[-1]
+                interrupt_id = None
+                if last_ev.content and last_ev.content.parts:
+                    for part in last_ev.content.parts:
+                        if part.function_call and part.function_call.name == "adk_request_input":
+                            interrupt_id = part.function_call.id
+                            break
+                if interrupt_id:
+                    response_event = Event(
+                        author="user",
+                        invocation_id=last_ev.invocation_id,
+                        content={
+                            "role": "user",
+                            "parts": [
+                                {
+                                    "function_response": {
+                                        "name": "adk_request_input",
+                                        "id": interrupt_id,
+                                        "response": {
+                                            "result": json.dumps({"decision": "reject", "feedback": "reallocate"})
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    )
+                    with st.status("Event Marketing Director: Re-routing workflow...", expanded=True) as status:
+                        asyncio.run(run_workflow_stream(brief_payload, response_event))
+                        status.update(label="Campaign Plan Reallocated with Optimization!", state="complete", expanded=False)
+                    st.session_state.optimized = True
+                    st.rerun()
                 
         with app_col3:
             if st.button("👎 Reject & Cancel Campaign", use_container_width=True):
                 st.error("Campaign plan rejected. Please modify details in the Event Brief sidebar to recalculate.")
-                
-        if st.session_state.reallocated:
-            st.info("🔄 Optimized allocation settings applied! The budget has been dynamically reallocated to maximize registration forecast.")
