@@ -115,7 +115,16 @@ async def main():
         node_name = ev.node_info.path if ev.node_info else 'Unknown'
         print(f"\nEvent {idx}: path={node_name}")
         print(f"  Type: {type(ev)}")
-        print(f"  Output keys: {list(ev.output.keys()) if ev.output else 'None'}")
+        if ev.output:
+            if hasattr(type(ev.output), "model_fields"):
+                keys_list = list(type(ev.output).model_fields.keys())
+            elif hasattr(ev.output, "keys"):
+                keys_list = list(ev.output.keys())
+            else:
+                keys_list = []
+            print(f"  Output keys: {keys_list}")
+        else:
+            print("  Output keys: None")
         if ev.content:
             print(f"  Content role: {ev.content.role}")
             print(f"  Content parts: {len(ev.content.parts)}")

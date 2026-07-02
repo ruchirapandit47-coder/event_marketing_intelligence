@@ -187,7 +187,7 @@ def validate_creative_output(node_input: dict, result: dict) -> dict:
 
 
 def creative_studio_agent(node_input: dict, ctx: Context) -> Event:
-    """Execute Creative Studio Agent calculations directly with self-review validation."""
+    """Execute Creative Studio Agent calculations directly with self-review validation returning structured output."""
     if hasattr(node_input, "model_dump"):
         node_input = node_input.model_dump()
     elif hasattr(node_input, "dict"):
@@ -205,4 +205,22 @@ def creative_studio_agent(node_input: dict, ctx: Context) -> Event:
     # Run self-validation review
     validated_result = validate_creative_output(node_input, result)
     
-    return Event(output=validated_result)
+    output_obj = CreativeStudioOutput(
+        instagram_captions=validated_result["instagram_captions"],
+        linkedin_posts=validated_result["linkedin_posts"],
+        email_invitation=validated_result["email_invitation"],
+        ad_headlines=validated_result["ad_headlines"],
+        call_to_action=validated_result["call_to_action"],
+        hashtags=validated_result["hashtags"],
+        campaign_theme=validated_result["campaign_theme"],
+        messaging_strategy=validated_result["messaging_strategy"],
+        audience_positioning=validated_result["audience_positioning"],
+        instagram_caption=validated_result["instagram_caption"],
+        linkedin_post=validated_result["linkedin_post"],
+        email_copy=validated_result["email_copy"],
+        google_ads_headline=validated_result["google_ads_headline"],
+        success_kpis=validated_result["success_kpis"],
+        messaging_alignment_confidence=validated_result["messaging_alignment_confidence"]
+    )
+    
+    return Event(output=output_obj)

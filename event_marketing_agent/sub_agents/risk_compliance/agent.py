@@ -86,7 +86,7 @@ def validate_risk_output(result: dict) -> dict:
 
 
 def risk_compliance_agent(node_input: dict, ctx: Context) -> Event:
-    """Execute Risk & Compliance Agent checks directly with self-review validation."""
+    """Execute Risk & Compliance Agent checks directly with self-review validation returning structured output."""
     if hasattr(node_input, "model_dump"):
         node_input = node_input.model_dump()
     elif hasattr(node_input, "dict"):
@@ -105,4 +105,18 @@ def risk_compliance_agent(node_input: dict, ctx: Context) -> Event:
     # Run self-validation review
     validated_result = validate_risk_output(result)
     
-    return Event(output=validated_result)
+    output_obj = RiskComplianceOutput(
+        shortfall_percentage=validated_result["shortfall_percentage"],
+        risk_category=validated_result["risk_category"],
+        warnings=validated_result["warnings"],
+        content_audits=validated_result["content_audits"],
+        is_approved=validated_result["is_approved"],
+        explanation=validated_result["explanation"],
+        risk_score=validated_result["risk_score"],
+        risk_factors=validated_result["risk_factors"],
+        corrective_actions=validated_result["corrective_actions"],
+        expected_improvement=validated_result["expected_improvement"],
+        risk_score_confidence=validated_result["risk_score_confidence"]
+    )
+    
+    return Event(output=output_obj)

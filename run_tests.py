@@ -129,8 +129,8 @@ def execute_workflow_simulation(scenario_name: str, brief: dict) -> None:
         # Simulate manager review and loopback approval
         print("[Node 9] Executing: request_human_approval (HITL)")
         print("  Workflow Paused. Displaying allocations, forecast, and risk assessment...")
-        print(f"  [Warnings]: {risk_output['warnings']}")
-        print(f"  [Shortfall]: {risk_output['shortfall_percentage']}%")
+        print(f"  [Warnings]: {risk_output.warnings}")
+        print(f"  [Shortfall]: {risk_output.shortfall_percentage}%")
         
         print("  Simulating manager interaction: Rejecting and triggering Reallocation optimization...")
         # Simulates REJECTED loopback by applying optimization and running again
@@ -165,7 +165,7 @@ def execute_workflow_simulation(scenario_name: str, brief: dict) -> None:
         print(f"  Forecasted registrations: {report['campaign_summary']['budget_details']['total_estimated_registrations']}")
         print(f"  Registration Goal: {report['campaign_summary']['budget_details']['registration_goal']}")
         print(f"  Feasibility: {report['campaign_summary']['budget_details']['feasibility_status']}")
-        print(f"  Optimization Applied: {db_output_opt['summary']['optimization_recommendation']}")
+        print(f"  Optimization Applied: {db_output_opt.summary.optimization_recommendation}")
 
     print("====================================================\n")
 

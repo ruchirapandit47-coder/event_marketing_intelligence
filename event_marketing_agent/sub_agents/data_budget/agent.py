@@ -117,7 +117,7 @@ def validate_budget_output(result: dict) -> dict:
 
 
 def data_budget_agent(node_input: dict, ctx: Context) -> Event:
-    """Execute Data & Budget Agent calculations directly with self-review validation."""
+    """Execute Data & Budget Agent calculations directly with self-review validation returning structured output."""
     if hasattr(node_input, "model_dump"):
         node_input = node_input.model_dump()
     elif hasattr(node_input, "dict"):
@@ -134,4 +134,13 @@ def data_budget_agent(node_input: dict, ctx: Context) -> Event:
     # Run self-validation review
     validated_result = validate_budget_output(result)
     
-    return Event(output=validated_result)
+    output_obj = DataBudgetOutput(
+        event_name=node_input.get("event_name", ""),
+        event_type=node_input["event_type"],
+        location=node_input.get("location", ""),
+        target_audience=node_input["target_audience"],
+        allocations=validated_result["allocations"],
+        summary=validated_result["summary"]
+    )
+    
+    return Event(output=output_obj)
