@@ -250,19 +250,89 @@ def validate_creative_output(node_input: dict, result: dict) -> dict:
     """Self-review step: Verify every selected marketing channel has corresponding creative assets (ad headlines)."""
     channels = node_input.get("channels", [])
     ad_headlines = result.get("ad_headlines", [])
+    event_name = node_input.get("event_name", "Global Seminar")
+    theme = node_input.get("theme", "Growth and Networking")
+    target_audience = node_input.get("target_audience", "Professionals")
+    event_type = node_input.get("event_type", "B2B")
 
     # Map existing headlines by channel name
     channels_with_headlines = {h.get("channel") if isinstance(h, dict) else h.channel for h in ad_headlines}
     
     for channel in channels:
         if channel not in channels_with_headlines:
-            # Regenerate only the missing section: add a baseline headline for this channel
             ad_headlines.append({
                 "channel": channel,
-                "headline": f"Discover {node_input.get('event_name', 'Event')} | Focused on {node_input.get('theme', 'our theme')}"
+                "headline": f"Discover {event_name} | Focused on {theme}"
             })
             
     result["ad_headlines"] = ad_headlines
+
+    # Ensure Campaign Theme is present and populated
+    if not result.get("campaign_theme") or not result["campaign_theme"].get("recommendation"):
+        result["campaign_theme"] = {
+            "recommendation": f"Theme: '{theme}'",
+            "reasoning": f"Directly addresses primary professional interests of {target_audience}."
+        }
+
+    # Ensure Messaging Strategy is present and populated
+    if not result.get("messaging_strategy") or not result["messaging_strategy"].get("recommendation"):
+        result["messaging_strategy"] = {
+            "recommendation": f"Key focus: '{theme}'",
+            "reasoning": f"Delivers high value copy highlights for {target_audience}."
+        }
+
+    # Ensure Instagram Caption is present and populated
+    if not result.get("instagram_caption") or not result["instagram_caption"].get("recommendation"):
+        result["instagram_caption"] = {
+            "recommendation": f"Join us at '{event_name}' to discover '{theme}'. Free passes available now!",
+            "reasoning": f"Leverages visually engaging topics for {target_audience}."
+        }
+
+    # Ensure LinkedIn Post is present and populated
+    if not result.get("linkedin_post") or not result["linkedin_post"].get("recommendation"):
+        result["linkedin_post"] = {
+            "recommendation": f"Excited to host '{event_name}' for all {target_audience} peers. Reserve your spot today to explore '{theme}'.",
+            "reasoning": f"Establishes credibility and peer networking value."
+        }
+
+    # Ensure Email Copy is present and populated
+    if not result.get("email_copy") or not result["email_copy"].get("recommendation"):
+        result["email_copy"] = {
+            "recommendation": f"Subject: Invitation to '{event_name}'\n\nDear Colleague,\n\nYou are cordially invited to join us to explore '{theme}'.",
+            "reasoning": f"Personal outreach style maximizes RSVP response rate."
+        }
+
+    # Ensure Google Ads Headline is present and populated
+    if not result.get("google_ads_headline") or not result["google_ads_headline"].get("recommendation"):
+        result["google_ads_headline"] = {
+            "recommendation": f"Register for {event_name} | {theme[:20]}",
+            "reasoning": f"Captures high-intent searches from prospects."
+        }
+
+    # Ensure Success KPIs are populated
+    if not result.get("success_kpis"):
+        result["success_kpis"] = [
+            {
+                "recommendation": "Registration conversion rate (Target: > 8%)",
+                "reasoning": "Standard benchmark metric for acquisition channels."
+            }
+        ]
+
+    # Ensure Call to Action is present and populated
+    if not result.get("call_to_action"):
+        result["call_to_action"] = [f"Register Now for {event_name}", "Book Free Ticket"]
+
+    # Ensure Hashtags are present and populated
+    if not result.get("hashtags"):
+        result["hashtags"] = [f"#{event_type.lower()}", f"#{theme.replace(' ', '').lower()}"]
+
+    # Ensure audience_positioning is present and populated
+    if not result.get("audience_positioning") or not result["audience_positioning"].get("recommendation"):
+        result["audience_positioning"] = {
+            "recommendation": f"Targeting {target_audience} segment.",
+            "reasoning": f"Aligns with demographic expectations."
+        }
+
     return result
 
 
