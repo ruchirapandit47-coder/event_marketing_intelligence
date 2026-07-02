@@ -14,12 +14,9 @@
 
 """Risk & Compliance Agent module for auditing plans and content."""
 
-from google.adk import Agent
+from google.adk import Event, Context
 from pydantic import BaseModel, Field
-
-from ...config import config
-from ...tools import evaluate_campaign_risks
-from .prompt import RISK_COMPLIANCE_INSTRUCTION
+from ...tools.compliance_tools import evaluate_campaign_risks
 
 
 class RiskComplianceInput(BaseModel):
@@ -55,13 +52,20 @@ class RiskComplianceOutput(BaseModel):
     explanation: str = Field(description="Detailed reason for approval decision and risk scoring")
 
 
-# Instantiation of the Risk & Compliance Agent
-risk_compliance_agent = Agent(
-    name="risk_compliance_agent",
-    model=config.model,
-    mode="single_turn",
-    instruction=RISK_COMPLIANCE_INSTRUCTION,
-    input_schema=RiskComplianceInput,
-    output_schema=RiskComplianceOutput,
-    tools=[evaluate_campaign_risks],
-)
+def risk_compliance_agent(node_input: dict, ctx: Context) -> Event:
+    """Execute Risk & Compliance Agent checks directly."""
+    if hasattr(node_input, "model_dump"):
+        node_input = node_input.model_dump()
+    elif hasattr(node_input, "dict"):
+        node_input = node_input.dict()
+
+    result = evaluate_campaign_risks(
+        event_name=node_input["event_name"],
+        event_type=node_input["event_type"],
+        target_audience=node_input["target_audience"],
+        marketing_budget=node_input["marketing_budget"],
+        registration_goal=node_input["registration_goal"],
+        allocations=node_input["allocations"],
+        summary=node_input["summary"]
+    )
+    return Event(output=result)

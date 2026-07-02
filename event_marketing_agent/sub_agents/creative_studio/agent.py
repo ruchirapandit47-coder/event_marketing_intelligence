@@ -14,11 +14,8 @@
 
 """Creative Studio Agent module for generating campaign assets."""
 
-from google.adk import Agent
+from google.adk import Event, Context
 from pydantic import BaseModel, Field
-
-from ...config import config
-from .prompt import CREATIVE_STUDIO_INSTRUCTION
 
 
 class CreativeStudioInput(BaseModel):
@@ -49,12 +46,30 @@ class CreativeStudioOutput(BaseModel):
     hashtags: list[str] = Field(description="Hashtag recommendations")
 
 
-# Instantiation of the Creative Studio Agent
-creative_studio_agent = Agent(
-    name="creative_studio_agent",
-    model=config.model,
-    mode="single_turn",
-    instruction=CREATIVE_STUDIO_INSTRUCTION,
-    input_schema=CreativeStudioInput,
-    output_schema=CreativeStudioOutput,
-)
+def mock_asset_generation(event_name, event_type, theme, target_audience, channels):
+    """Local generator for creative copywriting assets."""
+    return {
+        "instagram_captions": [f"Join us at {event_name}! #{event_type.lower()}"],
+        "linkedin_posts": [f"Learn about {theme} at {event_name}."],
+        "email_invitation": f"Subject: Invite to {event_name}\n\nDear [Name],\n\nWelcome to {event_name}.",
+        "ad_headlines": [{"channel": c, "headline": f"Join {event_name}"} for c in channels],
+        "call_to_action": ["Register Now"],
+        "hashtags": [f"#{event_type.lower()}"]
+    }
+
+
+def creative_studio_agent(node_input: dict, ctx: Context) -> Event:
+    """Execute Creative Studio Agent calculations directly."""
+    if hasattr(node_input, "model_dump"):
+        node_input = node_input.model_dump()
+    elif hasattr(node_input, "dict"):
+        node_input = node_input.dict()
+
+    result = mock_asset_generation(
+        event_name=node_input["event_name"],
+        event_type=node_input["event_type"],
+        theme=node_input["theme"],
+        target_audience=node_input["target_audience"],
+        channels=node_input["channels"]
+    )
+    return Event(output=result)

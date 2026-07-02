@@ -14,12 +14,9 @@
 
 """Data & Budget Agent module for allocating budget and forecasting registrations."""
 
-from google.adk import Agent
+from google.adk import Event, Context
 from pydantic import BaseModel, Field
-
-from ...config import config
-from ...tools import recommend_channels_and_allocate_budget
-from .prompt import DATA_BUDGET_INSTRUCTION
+from ...tools.budget_tools import recommend_channels_and_allocate_budget
 
 
 class DataBudgetInput(BaseModel):
@@ -70,13 +67,18 @@ class DataBudgetOutput(BaseModel):
     summary: BudgetSummary = Field(description="Consolidated budget allocation summary and forecast")
 
 
-# Instantiation of the Data & Budget Agent
-data_budget_agent = Agent(
-    name="data_budget_agent",
-    model=config.model,
-    mode="single_turn",
-    instruction=DATA_BUDGET_INSTRUCTION,
-    input_schema=DataBudgetInput,
-    output_schema=DataBudgetOutput,
-    tools=[recommend_channels_and_allocate_budget],
-)
+def data_budget_agent(node_input: dict, ctx: Context) -> Event:
+    """Execute Data & Budget Agent calculations directly."""
+    if hasattr(node_input, "model_dump"):
+        node_input = node_input.model_dump()
+    elif hasattr(node_input, "dict"):
+        node_input = node_input.dict()
+
+    result = recommend_channels_and_allocate_budget(
+        event_type=node_input["event_type"],
+        target_audience=node_input["target_audience"],
+        marketing_budget=node_input["marketing_budget"],
+        registration_goal=node_input["registration_goal"],
+        apply_optimization=node_input.get("apply_optimization", False)
+    )
+    return Event(output=result)

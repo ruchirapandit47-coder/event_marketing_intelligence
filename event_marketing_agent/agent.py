@@ -17,24 +17,15 @@
 from google.adk import Context, Event, Workflow
 from google.adk.events import RequestInput
 
-from .tools.budget_tools import recommend_channels_and_allocate_budget
-from .tools.compliance_tools import evaluate_campaign_risks
-
-
-def mock_asset_generation(event_name, event_type, theme, target_audience, channels):
-    """Local generator for creative copywriting assets."""
-    return {
-        "instagram_captions": [f"Join us at {event_name}! #{event_type.lower()}"],
-        "linkedin_posts": [f"Learn about {theme} at {event_name}."],
-        "email_invitation": f"Subject: Invite to {event_name}\n\nDear [Name],\n\nWelcome to {event_name}.",
-        "ad_headlines": [{"channel": c, "headline": f"Join {event_name}"} for c in channels],
-        "call_to_action": ["Register Now"],
-        "hashtags": [f"#{event_type.lower()}"]
-    }
+from .sub_agents import (
+    creative_studio_agent,
+    data_budget_agent,
+    risk_compliance_agent,
+)
 
 
 # ---------------------------------------------------------------------------
-# Workflow Nodes & Adapter Functions
+# Workflow Orchestration Nodes
 # ---------------------------------------------------------------------------
 
 
@@ -74,18 +65,6 @@ def goal_analysis(node_input: dict, ctx: Context) -> Event:
     return Event(output=db_input)
 
 
-def run_data_budget_agent(node_input: dict, ctx: Context) -> Event:
-    """Execute Data & Budget Agent calculations directly."""
-    result = recommend_channels_and_allocate_budget(
-        event_type=node_input["event_type"],
-        target_audience=node_input["target_audience"],
-        marketing_budget=node_input["marketing_budget"],
-        registration_goal=node_input["registration_goal"],
-        apply_optimization=node_input.get("apply_optimization", False)
-    )
-    return Event(output=result)
-
-
 def prepare_creative_input(node_input, ctx: Context) -> Event:
     """Save data budget forecast and prepare inputs for Creative Studio."""
     # Convert Pydantic output to dict
@@ -106,18 +85,6 @@ def prepare_creative_input(node_input, ctx: Context) -> Event:
         "channels": channels
     }
     return Event(output=creative_input)
-
-
-def run_creative_studio_agent(node_input: dict, ctx: Context) -> Event:
-    """Execute Creative Studio Agent calculations directly."""
-    result = mock_asset_generation(
-        event_name=node_input["event_name"],
-        event_type=node_input["event_type"],
-        theme=node_input["theme"],
-        target_audience=node_input["target_audience"],
-        channels=node_input["channels"]
-    )
-    return Event(output=result)
 
 
 def prepare_risk_input(node_input, ctx: Context) -> Event:
@@ -143,20 +110,6 @@ def prepare_risk_input(node_input, ctx: Context) -> Event:
         "linkedin_posts": node_input.get("linkedin_posts", [])
     }
     return Event(output=risk_input)
-
-
-def run_risk_compliance_agent(node_input: dict, ctx: Context) -> Event:
-    """Execute Risk & Compliance Agent checks directly."""
-    result = evaluate_campaign_risks(
-        event_name=node_input["event_name"],
-        event_type=node_input["event_type"],
-        target_audience=node_input["target_audience"],
-        marketing_budget=node_input["marketing_budget"],
-        registration_goal=node_input["registration_goal"],
-        allocations=node_input["allocations"],
-        summary=node_input["summary"]
-    )
-    return Event(output=result)
 
 
 def route_by_risk(node_input, ctx: Context) -> Event:
@@ -239,7 +192,7 @@ def adjust_brief_and_reallocate(node_input: dict, ctx: Context) -> Event:
 
 
 def generate_final_report(node_input, ctx: Context) -> Event:
-    """Generate the final marketing intelligence report."""
+    """Generate the final marketing intelligence report by combining sub-agent outputs."""
     db_res = ctx.state["data_budget_results"]
     creative = ctx.state["creative_assets"]
     risk = ctx.state["risk_assessment_results"]
@@ -271,17 +224,17 @@ root_agent = Workflow(
         # 1. Event Brief Input -> Goal Analysis
         ("START", parse_brief, goal_analysis),
         # 2. Goal Analysis -> Data & Budget Agent (recommends channels, allocates budget, forecasts registrations)
-        (goal_analysis, run_data_budget_agent),
+        (goal_analysis, data_budget_agent),
         # 3. Data & Budget Agent -> Prepare Creative Input
-        (run_data_budget_agent, prepare_creative_input),
+        (data_budget_agent, prepare_creative_input),
         # 4. Prepare Creative Input -> Creative Studio Agent (generates copywriting assets)
-        (prepare_creative_input, run_creative_studio_agent),
+        (prepare_creative_input, creative_studio_agent),
         # 5. Creative Studio Agent -> Prepare Risk Input
-        (run_creative_studio_agent, prepare_risk_input),
+        (creative_studio_agent, prepare_risk_input),
         # 6. Prepare Risk Input -> Risk & Compliance Agent (assesses shortfall and content)
-        (prepare_risk_input, run_risk_compliance_agent),
+        (prepare_risk_input, risk_compliance_agent),
         # 7. Risk & Compliance Agent -> Route By Risk
-        (run_risk_compliance_agent, route_by_risk),
+        (risk_compliance_agent, route_by_risk),
         # 8. Route By Risk split:
         #    - LOW RISK -> Go straight to final report
         #    - REQUIRES_APPROVAL -> Route to human approval (RequestInput)
@@ -302,6 +255,6 @@ root_agent = Workflow(
             },
         ),
         # 10. Loopback: Adjust brief & reallocate -> Data & Budget Agent
-        (adjust_brief_and_reallocate, run_data_budget_agent),
+        (adjust_brief_and_reallocate, data_budget_agent),
     ],
 )
