@@ -1,0 +1,65 @@
+{
+  "channels": {
+    "LinkedIn Ads": {
+      "cpr": 85.0,
+      "description": "Professional network, high conversion rate for B2B but higher cost.",
+      "priority": 1
+    },
+    "Google Search Ads": {
+      "cpr": 45.0,
+      "description": "Intent-driven search, excellent for both B2B and B2C.",
+      "priority": 2
+    },
+    "Meta Ads (FB/IG)": {
+      "cpr": 35.0,
+      "description": "Visual platforms, great reach and engagement for B2C and community events.",
+      "priority": 3
+    },
+    "Tech Newsletters": {
+      "cpr": 50.0,
+      "description": "Niche audiences, high quality leads for developer and technology events.",
+      "priority": 4
+    },
+    "TikTok Ads": {
+      "cpr": 25.0,
+      "description": "Short-form video, high reach and low cost for youth/consumer demographics.",
+      "priority": 5
+    },
+    "Email Marketing": {
+      "cpr": 10.0,
+      "description": "Own list re-engagement, very high ROI and low cost per sign-up.",
+      "priority": 6
+    },
+    "Local Event Listings": {
+      "cpr": 15.0,
+      "description": "Meetup, Eventbrite, and local sites, good for localized B2C/community events.",
+      "priority": 7
+    }
+  },
+  "default_budget_weights": {
+    "developer": {
+      "Tech Newsletters": 0.35,
+      "Google Search Ads": 0.30,
+      "LinkedIn Ads": 0.20,
+      "Email Marketing": 0.15
+    },
+    "b2b": {
+      "LinkedIn Ads": 0.45,
+      "Google Search Ads": 0.30,
+      "Email Marketing": 0.15,
+      "Tech Newsletters": 0.10
+    },
+    "consumer": {
+      "Meta Ads (FB/IG)": 0.40,
+      "TikTok Ads": 0.30,
+      "Local Event Listings": 0.15,
+      "Email Marketing": 0.15
+    },
+    "default": {
+      "Google Search Ads": 0.35,
+      "Meta Ads (FB/IG)": 0.30,
+      "Email Marketing": 0.20,
+      "Local Event Listings": 0.15
+    }
+  }
+}

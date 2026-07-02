@@ -16,16 +16,18 @@
 
 from typing import Dict, Any, List
 
-# Define cost per registration (CPR) parameters for different channels.
-CHANNEL_BENCHMARKS = {
-    "LinkedIn Ads": {"cpr": 85.00, "description": "Professional network, high conversion rate for B2B but higher cost."},
-    "Google Search Ads": {"cpr": 45.00, "description": "Intent-driven search, excellent for both B2B and B2C."},
-    "Meta Ads (FB/IG)": {"cpr": 35.00, "description": "Visual platforms, great reach and engagement for B2C and community events."},
-    "Tech Newsletters": {"cpr": 50.00, "description": "Niche audiences, high quality leads for developer and technology events."},
-    "TikTok Ads": {"cpr": 25.00, "description": "Short-form video, high reach and low cost for youth/consumer demographics."},
-    "Email Marketing": {"cpr": 10.00, "description": "Own list re-engagement, very high ROI and low cost per sign-up."},
-    "Local Event Listings": {"cpr": 15.00, "description": "Meetup, Eventbrite, and local sites, good for localized B2C/community events."}
-}
+import os
+import json
+
+# Dynamically load benchmarks and default weights from channels.json
+current_dir = os.path.dirname(os.path.abspath(__file__))
+channels_json_path = os.path.join(current_dir, "..", "channels.json")
+
+with open(channels_json_path, "r", encoding="utf-8") as f:
+    CHANNELS_CONFIG = json.load(f)
+
+CHANNEL_BENCHMARKS = CHANNELS_CONFIG["channels"]
+BUDGET_WEIGHTS = CHANNELS_CONFIG["default_budget_weights"]
 
 
 def recommend_channels_and_allocate_budget(
@@ -51,36 +53,17 @@ def recommend_channels_and_allocate_budget(
     audience_lower = target_audience.lower()
 
     # Step 1: Channel selection based on event type and audience
-    selected_channels = []
     if "developer" in event_type_lower or "software" in audience_lower or "tech" in event_type_lower:
-        selected_channels = [
-            ("Tech Newsletters", 0.35),
-            ("Google Search Ads", 0.30),
-            ("LinkedIn Ads", 0.20),
-            ("Email Marketing", 0.15),
-        ]
+        strategy_weights = BUDGET_WEIGHTS["developer"]
     elif "b2b" in event_type_lower or "corporate" in event_type_lower or "professional" in audience_lower:
-        selected_channels = [
-            ("LinkedIn Ads", 0.45),
-            ("Google Search Ads", 0.30),
-            ("Email Marketing", 0.15),
-            ("Tech Newsletters", 0.10),
-        ]
+        strategy_weights = BUDGET_WEIGHTS["b2b"]
     elif "consumer" in event_type_lower or "b2c" in event_type_lower or "student" in audience_lower or "youth" in audience_lower:
-        selected_channels = [
-            ("Meta Ads (FB/IG)", 0.40),
-            ("TikTok Ads", 0.30),
-            ("Local Event Listings", 0.15),
-            ("Email Marketing", 0.15),
-        ]
+        strategy_weights = BUDGET_WEIGHTS["consumer"]
     else:
-        # Default allocation strategy
-        selected_channels = [
-            ("Google Search Ads", 0.35),
-            ("Meta Ads (FB/IG)", 0.30),
-            ("Email Marketing", 0.20),
-            ("Local Event Listings", 0.15),
-        ]
+        strategy_weights = BUDGET_WEIGHTS["default"]
+
+    # Convert weights dict to selected_channels list of tuples
+    selected_channels = list(strategy_weights.items())
 
     # Step 2 & 3: Allocate budget, forecast registrations, and calculate cost per registration
     allocations = []
