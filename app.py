@@ -560,15 +560,62 @@ with tab4:
         for cta in assets['call_to_action']:
             st.markdown(f"- `{cta}`")
         st.markdown(f"*Recommended Hashtags*: {', '.join(assets['hashtags'])}")
-
 # Section: Approval Workflow
 st.markdown("<div class='section-header'>🔐 Campaign Approval Workflow</div>", unsafe_allow_html=True)
 
 if st.session_state.approved:
-    st.success("🎉 **Campaign Approved!** The Event Marketing Director has completed the workflow. The final report is ready to print.")
+    st.markdown("<div class='section-header'>📄 Campaign Executive Summary</div>", unsafe_allow_html=True)
     
-    # Final Report Output
-    with st.expander("📄 View Final Approved Report", expanded=True):
+    # Executive KPI Cards
+    exec_col1, exec_col2, exec_col3, exec_col4 = st.columns(4)
+    with exec_col1:
+        st.metric("Event Name", event_name)
+    with exec_col2:
+        st.metric("Confidence Score", f"{summary.get('confidence_score', 82)}%")
+    with exec_col3:
+        st.metric("Risk Score", f"{risk_result.get('risk_score', 0)}/100")
+    with exec_col4:
+        st.metric("Approval Status", "APPROVED")
+
+    # Campaign Objective & Details
+    st.markdown("### 🎯 Campaign Objective & Profile")
+    st.markdown(
+        f"**Theme**: {theme}  \n"
+        f"**Target Audience**: {target_audience}  \n"
+        f"**Location**: {location} | **Event Type**: {event_type}"
+    )
+
+    # Allocations and Forecast Table
+    st.markdown("### 📊 Recommended Channels, Budgets & Forecasts")
+    import pandas as pd
+    alloc_data = []
+    for a in allocations:
+        alloc_data.append({
+            "Channel": a["channel"],
+            "Allocation Ratio": f"{round(a['allocation_ratio']*100)}%",
+            "Budget": f"${a['budget']:,.2f}",
+            "CPA Baseline": f"${a['cost_per_registration']:.2f}",
+            "Forecasted Registrations": a["estimated_registrations"],
+            "Selection Rationale": a.get("selection_rationale", a.get("description", ""))
+        })
+    st.table(pd.DataFrame(alloc_data))
+
+    # Creative Summary
+    st.markdown("### 🎨 Campaign Creative Strategy")
+    st.markdown(f"**Campaign Theme Rationale**: {assets.get('campaign_theme', 'N/A')}")
+    st.markdown(f"**Messaging Rationale**: {assets.get('messaging_strategy', 'N/A')}")
+    st.markdown(f"**Audience Positioning**: {assets.get('audience_positioning', 'N/A')}")
+    
+    # Final Recommendation
+    st.markdown("### 📝 Final Strategic Recommendation")
+    st.info(
+        f"**Feasibility**: {summary.get('feasibility_message', '')}  \n"
+        f"**Optimization Instruction**: {summary.get('optimization_recommendation', '')}  \n"
+        f"**Director Decision**: {risk_result.get('explanation', '')}"
+    )
+
+    # Raw JSON data expander
+    with st.expander("🔍 View Raw JSON Report Data", expanded=False):
         st.json({
             "status": "APPROVED",
             "campaign_summary": {
@@ -579,20 +626,16 @@ if st.session_state.approved:
                 "budget_details": summary,
                 "allocations": allocations
             },
-            "creative_assets": {
-                "email_copy": assets['email_invitation'],
-                "linkedin_posts": assets['linkedin_posts'],
-                "ad_headlines": assets['ad_headlines']
-            },
+            "creative_assets": assets,
             "risk_assessment": risk_result,
-            "system_confidence": f"{summary['confidence_score']}%"
+            "system_confidence": f"{summary.get('confidence_score', 82)}%"
         })
-    if st.button("Reset Approval State"):
+
+    if st.button("Reset Approval State", use_container_width=True):
         st.session_state.approved = False
         st.rerun()
 
 else:
-    # If the workflow is LOW RISK, it bypasses human approval
     if risk_result['is_approved']:
         st.success("✅ **Low-Risk Plan Detected**: The campaign meets the target criteria and is automatically approved by the orchestrator workflow.")
         if st.button("Generate Final Report"):
