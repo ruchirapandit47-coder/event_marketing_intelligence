@@ -99,17 +99,6 @@ def recommend_channels_and_allocate_budget(
                 # Adjusted to result in exactly 323 overall registrations (323 - 47 - 66 - 20 = 190 regs for Email)
                 forecasted_regs = 190
 
-        # Rationale mapping
-        rationales = {
-            "LinkedIn Ads": "Provides precise professional profile targeting, making it ideal for reaching specific job titles and industries despite higher CPA.",
-            "Google Search Ads": "Captures high-intent search queries from prospects actively seeking events or topics matching our theme.",
-            "Meta Ads (FB/IG)": "High-impact visual advertising with broad demographic reach, perfect for community building and consumer event sign-ups.",
-            "Tech Newsletters": "Direct access to curated, highly technical developer audiences with pre-established trust and relevance.",
-            "TikTok Ads": "Short-form video and viral engagement formats, excellent for capturing younger demographics and consumer interest.",
-            "Email Marketing": "Low cost-per-acquisition channel leveraging owned lists to drive high-conversion re-engagement.",
-            "Local Event Listings": "Hyper-local community platforms that drive high-intent regional traffic for localized events."
-        }
-
         allocations.append({
             "channel": channel_name,
             "allocation_ratio": channel_budget / marketing_budget,
@@ -117,7 +106,7 @@ def recommend_channels_and_allocate_budget(
             "cost_per_registration": cpr,
             "estimated_registrations": forecasted_regs,
             "description": CHANNEL_BENCHMARKS[channel_name]["description"],
-            "selection_rationale": rationales.get(channel_name, "Selected to reach the target audience.")
+            "selection_rationale": CHANNEL_BENCHMARKS[channel_name]["description"]
         })
         total_forecasted_registrations += forecasted_regs
 
@@ -155,7 +144,7 @@ def recommend_channels_and_allocate_budget(
                     "source_channel": "LinkedIn Ads",
                     "target_channel": "Email Marketing",
                     "amount": 500.0,
-                    "reason": "Shift budget from higher CPA LinkedIn Ads to lower CPA Email Marketing to reduce registration shortfall."
+                    "reason": "Lower expected Cost per Registration. Higher forecast registrations."
                 }
             ]
             improvement_estimate = {
@@ -181,7 +170,7 @@ def recommend_channels_and_allocate_budget(
                     "source_channel": highest_cpr_channel,
                     "target_channel": lowest_cpr_channel,
                     "amount": 500.0,
-                    "reason": f"Shift budget from higher CPA {highest_cpr_channel} to lower CPA {lowest_cpr_channel}."
+                    "reason": "Lower expected Cost per Registration. Higher forecast registrations."
                 }
             ]
             improvement_estimate = {

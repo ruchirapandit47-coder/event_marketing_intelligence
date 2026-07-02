@@ -163,8 +163,8 @@ def evaluate_campaign_risks(
         has_email = any(item.get("channel") == "Email Marketing" for item in allocations)
         
         if has_linkedin and has_email:
-            corrective_actions.append("Shift 10% of budget from LinkedIn Ads to Email Marketing.")
-            corrective_actions.append("Reduce target registrations by 5% if budget cannot be increased.")
+            corrective_actions.append("Shift 10% of budget from LinkedIn Ads to Email Marketing because: Lower expected Cost per Registration and higher forecast registrations.")
+            corrective_actions.append("Reduce target registrations by 5% because: Target is too aggressive for current budget limits.")
             expected_improvement = {
                 "additional_registrations": 35,
                 "new_forecasted_total": (summary.get("total_estimated_registrations", 0) + 35),
@@ -172,8 +172,8 @@ def evaluate_campaign_risks(
                 "new_feasibility_status": "FEASIBLE"
             }
         else:
-            corrective_actions.append("Shift 10% of budget from high-CPA channels to lower-CPA channels.")
-            corrective_actions.append("Increase overall budget by $1,000 to bridge the registration gap.")
+            corrective_actions.append("Shift 10% of budget from high-CPA channels to lower-CPA channels because: Lower expected Cost per Registration and higher forecast registrations.")
+            corrective_actions.append("Increase overall budget by $1,000 because: Current budget cannot support target registration volume.")
             expected_improvement = {
                 "additional_registrations": int(1000 / 25.0), # using TikTok or low CPR channel baseline
                 "new_forecasted_total": (summary.get("total_estimated_registrations", 0) + 40),
@@ -181,7 +181,7 @@ def evaluate_campaign_risks(
                 "new_feasibility_status": "FEASIBLE"
             }
     else:
-        corrective_actions.append("Current campaign parameters are within safe thresholds. No corrective action required.")
+        corrective_actions.append("Current campaign parameters are within safe thresholds because: All safety metrics are within bounds.")
         expected_improvement = {
             "additional_registrations": 0,
             "new_forecasted_total": summary.get("total_estimated_registrations", 0),

@@ -2,37 +2,37 @@
   "channels": {
     "LinkedIn Ads": {
       "cpr": 85.0,
-      "description": "Professional network, high conversion rate for B2B but higher cost.",
+      "description": "Best suited for B2B professionals.",
       "priority": 1
     },
     "Google Search Ads": {
       "cpr": 45.0,
-      "description": "Intent-driven search, excellent for both B2B and B2C.",
+      "description": "High intent audience. Strong conversion rate for this event type.",
       "priority": 2
     },
     "Meta Ads (FB/IG)": {
       "cpr": 35.0,
-      "description": "Visual platforms, great reach and engagement for B2C and community events.",
+      "description": "High reach and engagement for community and consumer events.",
       "priority": 3
     },
     "Tech Newsletters": {
       "cpr": 50.0,
-      "description": "Niche audiences, high quality leads for developer and technology events.",
+      "description": "Direct access to high-intent developer and technology audiences.",
       "priority": 4
     },
     "TikTok Ads": {
       "cpr": 25.0,
-      "description": "Short-form video, high reach and low cost for youth/consumer demographics.",
+      "description": "Low Cost-Per-Registration. Excellent for capturing younger demographics.",
       "priority": 5
     },
     "Email Marketing": {
       "cpr": 10.0,
-      "description": "Own list re-engagement, very high ROI and low cost per sign-up.",
+      "description": "Lowest Cost-Per-Registration. Drives high volume of low-cost sign-ups.",
       "priority": 6
     },
     "Local Event Listings": {
       "cpr": 15.0,
-      "description": "Meetup, Eventbrite, and local sites, good for localized B2C/community events.",
+      "description": "Effective for localized regional traffic.",
       "priority": 7
     }
   },
