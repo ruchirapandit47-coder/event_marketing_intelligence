@@ -106,30 +106,88 @@ def evaluate_campaign_risks(
             "specifically defined for accurate campaign targeting."
         )
 
-    # 5. Risk Categorization based on Shortfall
-    # Shortfall % = (registration_gap / registration_goal) * 100
+    # 5. Risk Score and Categorization based on Shortfall and warnings
     registration_gap = summary.get("registration_gap", 0)
     shortfall_percentage = (registration_gap / registration_goal * 100.0) if registration_goal > 0 else 0.0
     
+    # Calculate a numerical risk score (0-100)
+    # Shortfall contributes up to 50 points
+    base_shortfall_risk = min(50.0, shortfall_percentage)
+    # Warnings contribute 15 points each
+    warnings_penalty = len(warnings) * 15.0
+    risk_score = base_shortfall_risk + warnings_penalty
+    risk_score = round(min(100.0, max(0.0, risk_score)), 1)
+
     # Categorize Risk
-    # 0-5% shortfall = LOW RISK
+    # 0-5% shortfall/warnings = LOW RISK
     # 5-15% shortfall = MEDIUM RISK
     # 15%+ shortfall = HIGH RISK
-    # If there are critical warnings, raise the risk level
-    if shortfall_percentage <= 5.0:
+    if risk_score <= 10.0:
         risk_category = "LOW RISK"
-    elif shortfall_percentage <= 15.0:
+    elif risk_score <= 35.0:
         risk_category = "MEDIUM RISK"
     else:
         risk_category = "HIGH RISK"
 
     # Escalate risk if critical warnings exist
     if warnings and risk_category == "LOW RISK":
-        # If there are serious warnings, escalate to at least Medium Risk
         risk_category = "MEDIUM RISK"
 
     # Require manager approval (is_approved = False) if risk is Medium or High
     is_approved = risk_category == "LOW RISK"
+
+    # Compile risk factors (reasons)
+    risk_factors = []
+    if shortfall_percentage > 0:
+        risk_factors.append(f"Registration target has a shortfall of {registration_gap} sign-ups ({shortfall_percentage:.1f}%).")
+    for w in warnings:
+        if "unrealistic" in w.lower():
+            risk_factors.append("Registration target is aggressive (required CPA is below sustainable baseline).")
+        elif "over-allocation" in w.lower():
+            risk_factors.append("Total allocated budget exceeds limit.")
+        elif "low-performing" in w.lower():
+            risk_factors.append("LinkedIn allocation is above recommended range for this audience category.")
+        elif "audience" in w.lower():
+            risk_factors.append("Audience targeting specification is too broad or vague.")
+    
+    if not risk_factors:
+        risk_factors.append("No critical risk factors identified.")
+
+    # Compile corrective actions (recommendations) and expected improvement
+    corrective_actions = []
+    expected_improvement = {}
+
+    if risk_score > 10.0:
+        # Check channels to recommend reallocation
+        has_linkedin = any(item.get("channel") == "LinkedIn Ads" for item in allocations)
+        has_email = any(item.get("channel") == "Email Marketing" for item in allocations)
+        
+        if has_linkedin and has_email:
+            corrective_actions.append("Shift 10% of budget from LinkedIn Ads to Email Marketing.")
+            corrective_actions.append("Reduce target registrations by 5% if budget cannot be increased.")
+            expected_improvement = {
+                "additional_registrations": 35,
+                "new_forecasted_total": (summary.get("total_estimated_registrations", 0) + 35),
+                "new_risk_score": max(5.0, risk_score - 25.0),
+                "new_feasibility_status": "FEASIBLE"
+            }
+        else:
+            corrective_actions.append("Shift 10% of budget from high-CPA channels to lower-CPA channels.")
+            corrective_actions.append("Increase overall budget by $1,000 to bridge the registration gap.")
+            expected_improvement = {
+                "additional_registrations": int(1000 / 25.0), # using TikTok or low CPR channel baseline
+                "new_forecasted_total": (summary.get("total_estimated_registrations", 0) + 40),
+                "new_risk_score": max(5.0, risk_score - 20.0),
+                "new_feasibility_status": "FEASIBLE"
+            }
+    else:
+        corrective_actions.append("Current campaign parameters are within safe thresholds. No corrective action required.")
+        expected_improvement = {
+            "additional_registrations": 0,
+            "new_forecasted_total": summary.get("total_estimated_registrations", 0),
+            "new_risk_score": risk_score,
+            "new_feasibility_status": "FEASIBLE"
+        }
 
     # Expose audits structure
     content_audits = [
@@ -146,7 +204,7 @@ def evaluate_campaign_risks(
     ]
 
     explanation = (
-        f"Campaign risk evaluated as {risk_category} based on a registration shortfall of "
+        f"Campaign risk evaluated as {risk_category} (Risk Score: {risk_score}/100) based on a registration shortfall of "
         f"{shortfall_percentage:.1f}% ({registration_gap}/{registration_goal} registrations gap). "
     )
     if warnings:
@@ -160,5 +218,9 @@ def evaluate_campaign_risks(
         "warnings": warnings,
         "content_audits": content_audits,
         "is_approved": is_approved,
-        "explanation": explanation
+        "explanation": explanation,
+        "risk_score": risk_score,
+        "risk_factors": risk_factors,
+        "corrective_actions": corrective_actions,
+        "expected_improvement": expected_improvement
     }

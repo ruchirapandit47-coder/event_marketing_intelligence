@@ -50,6 +50,12 @@ class RiskComplianceOutput(BaseModel):
     content_audits: list[ContentAudit] = Field(description="Audits on campaign assets and configurations")
     is_approved: bool = Field(description="True if safe to proceed (LOW RISK), False if HITL approval required (MEDIUM/HIGH RISK)")
     explanation: str = Field(description="Detailed reason for approval decision and risk scoring")
+    
+    # Enhanced Risk & Compliance fields
+    risk_score: float = Field(description="Numerical risk score (0-100)")
+    risk_factors: list[str] = Field(description="Detailed explanations of every risk factor")
+    corrective_actions: list[str] = Field(description="Recommended corrective actions")
+    expected_improvement: dict = Field(description="Estimated improvement if recommendations are followed")
 
 
 def risk_compliance_agent(node_input: dict, ctx: Context) -> Event:
