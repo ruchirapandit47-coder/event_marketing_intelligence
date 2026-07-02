@@ -740,17 +740,74 @@ else:
     else:
         st.warning("⚠️ **Approval Required**: The Risk Rating is Medium or High. Manager review is required before this plan can be finalized.")
         
-        # Display the prompt
-        st.markdown("### Approve Marketing Plan? (Approve / Reject)")
+        st.markdown("<div class='section-header'>📋 Manager Review Console</div>", unsafe_allow_html=True)
         
-        # Display optimization tips in the approval box
-        if summary.get("optimization_recommendation"):
-            st.info(f"💡 **Optimization recommendation from Data & Budget Agent:**\n{summary['optimization_recommendation']}")
+        # 1. Campaign Summary
+        st.markdown("#### 🔹 Campaign Summary")
+        sum_col1, sum_col2 = st.columns(2)
+        with sum_col1:
+            st.write(f"**Event Name:** {event_name}")
+            st.write(f"**Event Type:** {event_type}")
+            st.write(f"**Location:** {location}")
+        with sum_col2:
+            st.write(f"**Target Audience:** {target_audience}")
+            st.write(f"**Campaign Theme:** {theme}")
             
-        app_col1, app_col2, app_col3 = st.columns(3)
+        st.divider()
+        
+        # 2. Budget Allocation & 3. Registration Forecast
+        st.markdown("#### 🔹 Budget Allocation & Registration Forecast")
+        fc_col1, fc_col2, fc_col3 = st.columns(3)
+        with fc_col1:
+            st.metric("Total Budget", f"${summary.get('total_budget', 0.0):,.2f}")
+        with fc_col2:
+            st.metric("Registration Forecast", f"{summary.get('total_estimated_registrations', 0)} / {registration_goal} goal")
+        with fc_col3:
+            gap_count = summary.get("registration_gap", 0)
+            st.metric("Registration Shortfall", f"{gap_count} sign-ups", delta=f"-{gap_count}" if gap_count > 0 else None, delta_color="inverse")
+            
+        # Budget Allocation mix table
+        alloc_rows = []
+        for a in allocations:
+            alloc_rows.append({
+                "Channel": a["channel"],
+                "Allocation Ratio": f"{round(a['allocation_ratio']*100)}%",
+                "Budget (USD)": f"${a['budget']:,.2f}",
+                "CPA Baseline": f"${a['cost_per_registration']:.2f}",
+                "Estimated Sign-ups": a["estimated_registrations"]
+            })
+        st.table(pd.DataFrame(alloc_rows))
+        
+        st.divider()
+        
+        # 4. Risk Score & 5. Key Risks
+        st.markdown("#### 🔹 Compliance & Risk Assessment")
+        risk_col1, risk_col2 = st.columns([1, 2])
+        with risk_col1:
+            st.metric("Risk Score", f"{risk_result.get('risk_score', 0)} / 100", f"Category: {risk_result.get('risk_category', 'N/A')}")
+            st.caption(f"Risk confidence: {risk_result.get('risk_score_confidence', 95.0)}%")
+        with risk_col2:
+            if risk_result.get("warnings"):
+                st.write("**Key Risks Identified:**")
+                for w in risk_result["warnings"]:
+                    st.write(f"- ⚠️ *{w}*")
+            else:
+                st.write("🟢 *No compliance warnings identified.*")
+                
+        st.divider()
+        
+        # 6. Budget Optimization Suggestions
+        st.markdown("#### 🔹 Budget Optimization Suggestions")
+        if summary.get("optimization_recommendation"):
+            st.info(f"💡 **Suggested Reallocation Plan:**  \n{summary['optimization_recommendation']}")
+        else:
+            st.write("🟢 *Current allocation mix is fully optimized.*")
+            
+        st.markdown("### Approve Campaign Plan?")
+        app_col1, app_col2 = st.columns(2)
         
         with app_col1:
-            if st.button("👍 Approve Plan", use_container_width=True):
+            if st.button("👍 Approve Proposal", use_container_width=True):
                 # Extract last event interrupt ID
                 session = st.session_state.workflow_session
                 last_ev = session.events[-1]
@@ -786,7 +843,7 @@ else:
                     st.rerun()
                 
         with app_col2:
-            if st.button("⚙️ Apply Optimization & Reallocate", use_container_width=True):
+            if st.button("👎 Reject Proposal (Reallocate & Optimize)", use_container_width=True):
                 session = st.session_state.workflow_session
                 last_ev = session.events[-1]
                 interrupt_id = None
@@ -819,7 +876,3 @@ else:
                         status.update(label="Campaign Plan Reallocated with Optimization!", state="complete", expanded=False)
                     st.session_state.optimized = True
                     st.rerun()
-                
-        with app_col3:
-            if st.button("👎 Reject & Cancel Campaign", use_container_width=True):
-                st.error("Campaign plan rejected. Please modify details in the Event Brief sidebar to recalculate.")
