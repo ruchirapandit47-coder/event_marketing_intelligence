@@ -40,6 +40,7 @@ class ChannelAllocation(BaseModel):
     cost_per_registration: float = Field(description="Cost per registration benchmark")
     estimated_registrations: int = Field(description="Number of registrations estimated from this channel")
     description: str = Field(description="Brief channel explanation")
+    selection_rationale: str = Field(description="Why this channel was selected")
 
 
 class BudgetSummary(BaseModel):
@@ -54,6 +55,12 @@ class BudgetSummary(BaseModel):
     feasibility_message: str = Field(description="Message describing the feasibility of the campaign")
     confidence_score: float = Field(description="Confidence score in percent (e.g. 82.0 for 82%)")
     optimization_recommendation: str = Field(description="Optimization suggestions to improve feasibility")
+    
+    # Enterprise Decision Support System extensions
+    forecast_confidence: dict = Field(description="Details on forecast confidence score and level")
+    registration_gap_analysis: dict = Field(description="Details on gap amount and percentage")
+    reallocation_recommendations: list[dict] = Field(description="Recommended shifts to bridge gaps")
+    improvement_estimate: dict = Field(description="Estimated metrics after executing suggestions")
 
 
 class DataBudgetOutput(BaseModel):
