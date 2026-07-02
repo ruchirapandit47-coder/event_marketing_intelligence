@@ -227,6 +227,9 @@ def evaluate_campaign_risks(
     else:
         explanation += "No compliance or target warnings identified."
 
+    # Calculate confidence in risk score evaluation
+    risk_score_confidence = max(50.0, 100.0 - (len(warnings) * 10.0))
+
     return {
         "shortfall_percentage": round(shortfall_percentage, 2),
         "risk_category": risk_category,
@@ -237,5 +240,6 @@ def evaluate_campaign_risks(
         "risk_score": risk_score,
         "risk_factors": risk_factors,
         "corrective_actions": corrective_actions,
-        "expected_improvement": expected_improvement
+        "expected_improvement": expected_improvement,
+        "risk_score_confidence": risk_score_confidence
     }

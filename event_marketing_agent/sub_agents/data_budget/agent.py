@@ -43,6 +43,13 @@ class ChannelAllocation(BaseModel):
     selection_rationale: str = Field(description="Why this channel was selected")
 
 
+class ConfidenceInterval(BaseModel):
+    """Lower and upper bounds of forecasted registrations."""
+
+    lower_bound: int = Field(description="Lower bound registration forecast")
+    upper_bound: int = Field(description="Upper bound registration forecast")
+
+
 class BudgetSummary(BaseModel):
     """Consolidated budget metrics and feasibility results."""
 
@@ -55,6 +62,7 @@ class BudgetSummary(BaseModel):
     feasibility_message: str = Field(description="Message describing the feasibility of the campaign")
     confidence_score: float = Field(description="Confidence score in percent (e.g. 82.0 for 82%)")
     optimization_recommendation: str = Field(description="Optimization suggestions to improve feasibility")
+    confidence_interval: ConfidenceInterval = Field(description="Confidence interval for registration forecast")
     
     # Enterprise Decision Support System extensions
     forecast_confidence: dict = Field(description="Details on forecast confidence score and level")

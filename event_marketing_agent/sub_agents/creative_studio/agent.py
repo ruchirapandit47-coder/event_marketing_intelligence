@@ -61,6 +61,7 @@ class CreativeStudioOutput(BaseModel):
     email_copy: StrategicRecommendation = Field(description="Email invitation copy and why it fits the selected audience")
     google_ads_headline: StrategicRecommendation = Field(description="Google Ads headline and why it fits the selected audience")
     success_kpis: list[StrategicRecommendation] = Field(description="Success KPIs and why they fit the selected audience")
+    messaging_alignment_confidence: float = Field(description="Confidence score that selected messaging aligns with target audience (0-100)")
 
 
 def mock_asset_generation(event_name, event_type, theme, target_audience, channels):
@@ -148,7 +149,8 @@ def mock_asset_generation(event_name, event_type, theme, target_audience, channe
             f"Register Now (Direct & high-intent, fits {target_audience} preferences)",
             f"Confirm RSVP (Exclusivity-based, fits curated calendar preferences)"
         ],
-        "hashtags": [f"#{event_type.lower()}", f"#{theme.replace(' ', '').lower()}"]
+        "hashtags": [f"#{event_type.lower()}", f"#{theme.replace(' ', '').lower()}"],
+        "messaging_alignment_confidence": round(min(98.0, 85.0 + len(target_audience) * 0.2), 1)
     }
 
 

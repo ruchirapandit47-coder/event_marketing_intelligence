@@ -207,6 +207,10 @@ def recommend_channels_and_allocate_budget(
             "feasibility_message": feasibility_message,
             "confidence_score": confidence_score,
             "optimization_recommendation": optimization_recommendation,
+            "confidence_interval": {
+                "lower_bound": int(total_forecasted_registrations * 0.90),
+                "upper_bound": int(total_forecasted_registrations * 1.10)
+            },
             
             # Enterprise Decision Support System extensions
             "forecast_confidence": {

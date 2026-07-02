@@ -63,6 +63,7 @@ class RiskComplianceOutput(BaseModel):
     risk_factors: list[str] = Field(description="Detailed explanations of every risk factor")
     corrective_actions: list[CorrectiveAction] = Field(description="Recommended corrective actions and rationales")
     expected_improvement: dict = Field(description="Estimated improvement if recommendations are followed")
+    risk_score_confidence: float = Field(description="Confidence score in the calculated risk score (0-100)")
 
 
 def validate_risk_output(result: dict) -> dict:

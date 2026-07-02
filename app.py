@@ -430,7 +430,11 @@ st.markdown("<div class='section-header'>📊 Executive Campaign Metrics</div>",
 # Render progress bar for confidence
 conf_score = summary.get("confidence_score", 82.0)
 conf_level = summary.get("forecast_confidence", {}).get("confidence_level", "High")
-st.markdown(f"**Forecast Confidence Level**: `{conf_level}` ({conf_score}% score)")
+conf_interval = summary.get("confidence_interval", {"lower_bound": 0, "upper_bound": 0})
+st.markdown(
+    f"**Forecast Confidence Level**: `{conf_level}` ({conf_score}% score)  \n"
+    f"**Forecast Confidence Interval (90% - 110%)**: `[{conf_interval.get('lower_bound')} to {conf_interval.get('upper_bound')}] registrations`"
+)
 st.progress(int(conf_score))
 
 col1, col2, col3, col4 = st.columns(4)
@@ -531,12 +535,13 @@ with panel_col2:
     # Risk banner and alerts
     risk_score = risk_result.get("risk_score", 0.0)
     risk_cat = risk_result.get("risk_category", "LOW RISK")
+    risk_conf = risk_result.get("risk_score_confidence", 95.0)
     if risk_score <= 10.0:
-        st.success(f"🟢 **LOW RISK** (Score: {risk_score}/100): {risk_result['explanation']}")
+        st.success(f"🟢 **LOW RISK** (Score: {risk_score}/100 | Confidence: {risk_conf}%): {risk_result['explanation']}")
     elif risk_score <= 35.0:
-        st.warning(f"🟡 **MEDIUM RISK** (Score: {risk_score}/100): {risk_result['explanation']}")
+        st.warning(f"🟡 **MEDIUM RISK** (Score: {risk_score}/100 | Confidence: {risk_conf}%): {risk_result['explanation']}")
     else:
-        st.error(f"🔴 **HIGH RISK** (Score: {risk_score}/100): {risk_result['explanation']}")
+        st.error(f"🔴 **HIGH RISK** (Score: {risk_score}/100 | Confidence: {risk_conf}%): {risk_result['explanation']}")
         
     if risk_result.get('risk_factors'):
         with st.expander("🔍 Explanatory Risk Factors", expanded=True):
@@ -556,6 +561,9 @@ st.divider()
 
 # Section: Generated Creative Assets
 st.markdown("<div class='section-header'>🎨 Generated Campaign Assets (Creative Studio)</div>", unsafe_allow_html=True)
+creative_conf = assets.get("messaging_alignment_confidence", 90.0)
+st.markdown(f"**Messaging Audience Alignment Confidence**: **{creative_conf}%**")
+st.progress(int(creative_conf))
 tab1, tab2, tab3, tab4 = st.tabs(["📧 Email Copy", "🔗 LinkedIn Posts", "📸 Instagram Captions", "💡 Ad Headlines"])
 
 with tab1:
@@ -598,10 +606,14 @@ if st.session_state.approved:
         st.metric("Event Name", event_name)
     with exec_col2:
         st.metric("Confidence Score", f"{summary.get('confidence_score', 82)}%")
+        conf_interval = summary.get("confidence_interval", {"lower_bound": 0, "upper_bound": 0})
+        st.caption(f"Interval: {conf_interval.get('lower_bound')}-{conf_interval.get('upper_bound')} regs")
     with exec_col3:
         st.metric("Risk Score", f"{risk_result.get('risk_score', 0)}/100")
+        st.caption(f"Risk confidence: {risk_result.get('risk_score_confidence', 95.0)}%")
     with exec_col4:
         st.metric("Approval Status", "APPROVED")
+        st.caption(f"Creative fit alignment: {assets.get('messaging_alignment_confidence', 90.0)}%")
 
     # Campaign Objective & Details
     st.markdown("### 🎯 Campaign Objective & Profile")
