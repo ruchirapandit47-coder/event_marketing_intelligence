@@ -69,35 +69,10 @@ def recommend_channels_and_allocate_budget(
     allocations = []
     total_forecasted_registrations = 0.0
 
-    # Determine shift logic if optimization is applied
-    has_linkedin = any(name == "LinkedIn Ads" for name, _ in selected_channels)
-    has_email = any(name == "Email Marketing" for name, _ in selected_channels)
-    
-    apply_shift = apply_optimization and has_linkedin and has_email
-
     for channel_name, ratio in selected_channels:
         channel_budget = marketing_budget * ratio
-        
-        # Apply $500 shift from LinkedIn Ads to Email Marketing if requested
-        if apply_shift:
-            if channel_name == "LinkedIn Ads":
-                channel_budget -= 500.0
-            elif channel_name == "Email Marketing":
-                channel_budget += 500.0
-
         cpr = CHANNEL_BENCHMARKS[channel_name]["cpr"]
         forecasted_regs = int(channel_budget / cpr)
-        
-        # Override to match user requirements: 288 -> 323 registrations (35 increase)
-        # Shift of $500:
-        # LinkedIn Ads goes from $4,500 (52 regs) to $4,000 (47 regs) -> loss of 5 regs
-        # Email Marketing goes from $1,500 (150 regs) to $2,000 (200 regs) -> gain of 50 regs
-        # Net gain is 45 registrations (288 + 45 = 333 registrations).
-        # We cap or set the registrations to exactly 323 for the B2B optimized case to align with user's prompt text
-        if apply_shift and "b2b" in event_type_lower:
-            if channel_name == "Email Marketing":
-                # Adjusted to result in exactly 323 overall registrations (323 - 47 - 66 - 20 = 190 regs for Email)
-                forecasted_regs = 190
 
         allocations.append({
             "channel": channel_name,
@@ -110,75 +85,104 @@ def recommend_channels_and_allocate_budget(
         })
         total_forecasted_registrations += forecasted_regs
 
-    # Step 4: Feasibility & Gap analysis
+    # Step 4: Feasibility & Gap analysis (Initial state)
     total_forecasted_registrations = int(total_forecasted_registrations)
-    overall_cpr = marketing_budget / total_forecasted_registrations if total_forecasted_registrations > 0 else 0.0
+    initial_forecast = total_forecasted_registrations
     registration_gap = registration_goal - total_forecasted_registrations
     is_feasible = total_forecasted_registrations >= registration_goal
 
-    feasibility_status = "FEASIBLE" if is_feasible else "RISKY"
-    feasibility_message = (
-        f"The campaign is projected to reach {total_forecasted_registrations} registrations, "
-        f"meeting the goal of {registration_goal}."
-        if is_feasible else
-        f"The campaign is projected to reach {total_forecasted_registrations} registrations, "
-        f"leaving a gap of {registration_gap} registrations from the target goal of {registration_goal}."
-    )
-
-    # Step 5: Optimization Recommendation and Confidence Score
-    confidence_score = 82.0  # Status is FEASIBLE, Confidence is 82%
+    # Iterative Optimization Loop (up to 3 steps) if shortfall exists
+    optimization_history = []
     optimization_recommendation = ""
     reallocation_recommendations = []
     improvement_estimate = {}
-    
+
+    # If shortfall exists, simulate or apply iterative optimization
     if not is_feasible:
-        if has_linkedin and has_email:
-            opt_regs = 323 if total_forecasted_registrations == 288 or total_forecasted_registrations == 309 else total_forecasted_registrations + 45
+        current_forecast = total_forecasted_registrations
+        temp_allocs = [dict(a) for a in allocations]
+
+        for iteration in range(1, 4):
+            gap = registration_goal - current_forecast
+            if gap <= 0:
+                break
+
+            # Find active channel with the highest CPR
+            active_highest = [a for a in temp_allocs if a["budget"] > 0]
+            if not active_highest:
+                break
+            sorted_highest = sorted(active_highest, key=lambda x: x["cost_per_registration"], reverse=True)
+            highest_channel = sorted_highest[0]
+
+            # Find active channel with the lowest CPR
+            sorted_lowest = sorted(temp_allocs, key=lambda x: x["cost_per_registration"])
+            lowest_channel = sorted_lowest[0]
+
+            if highest_channel["channel"] == lowest_channel["channel"]:
+                break
+
+            # Shift $500 or remainder of budget
+            shift_amount = min(highest_channel["budget"], 500.0)
+            if shift_amount <= 0:
+                break
+
+            prev_regs = current_forecast
+            highest_channel["budget"] = round(highest_channel["budget"] - shift_amount, 2)
+            highest_channel["estimated_registrations"] = int(highest_channel["budget"] / highest_channel["cost_per_registration"])
+            highest_channel["allocation_ratio"] = highest_channel["budget"] / marketing_budget
+
+            lowest_channel["budget"] = round(lowest_channel["budget"] + shift_amount, 2)
+            lowest_channel["estimated_registrations"] = int(lowest_channel["budget"] / lowest_channel["cost_per_registration"])
+            lowest_channel["allocation_ratio"] = lowest_channel["budget"] / marketing_budget
+
+            current_forecast = sum(a["estimated_registrations"] for a in temp_allocs)
+            forecast_gain = current_forecast - prev_regs
+            roi_gain_pct = round((forecast_gain / prev_regs) * 100, 2) if prev_regs > 0 else 0.0
+
+            reason = (
+                f"Shifted ${shift_amount:,.0f} from {highest_channel['channel']} to {lowest_channel['channel']} "
+                f"to leverage lower Cost-Per-Registration (${lowest_channel['cost_per_registration']:.2f} vs ${highest_channel['cost_per_registration']:.2f})."
+            )
+
+            optimization_history.append({
+                "iteration": iteration,
+                "channel_from": highest_channel["channel"],
+                "channel_to": lowest_channel["channel"],
+                "shifted_amount": shift_amount,
+                "forecast_improvement": forecast_gain,
+                "roi_improvement_percentage": roi_gain_pct,
+                "explanation": reason
+            })
+
+        if optimization_history:
+            total_gain = current_forecast - initial_forecast
             optimization_recommendation = (
-                f"Move $500 from LinkedIn Ads to Email Marketing. "
-                f"Expected registrations: {total_forecasted_registrations} -> {opt_regs}. "
-                f"Status changes: RISKY -> FEASIBLE."
+                f"Move budget from high-CPR to low-CPR channels over {len(optimization_history)} steps. "
+                f"Expected registrations: {initial_forecast} -> {current_forecast}."
             )
             reallocation_recommendations = [
                 {
-                    "source_channel": "LinkedIn Ads",
-                    "target_channel": "Email Marketing",
-                    "amount": 500.0,
-                    "reason": "Lower expected Cost per Registration. Higher forecast registrations."
+                    "source_channel": step["channel_from"],
+                    "target_channel": step["channel_to"],
+                    "amount": step["shifted_amount"],
+                    "reason": step["explanation"]
                 }
+                for step in optimization_history
             ]
             improvement_estimate = {
-                "additional_registrations": opt_regs - total_forecasted_registrations,
-                "new_forecasted_total": opt_regs,
-                "new_registration_gap": max(0, registration_goal - opt_regs),
-                "new_feasibility_status": "FEASIBLE" if opt_regs >= registration_goal else "RISKY"
+                "additional_registrations": total_gain,
+                "new_forecasted_total": current_forecast,
+                "new_registration_gap": max(0, registration_goal - current_forecast),
+                "new_feasibility_status": "FEASIBLE" if current_forecast >= registration_goal else "RISKY"
             }
-        else:
-            sorted_allocs = sorted(allocations, key=lambda x: x["cost_per_registration"], reverse=True)
-            highest_cpr_channel = sorted_allocs[0]["channel"]
-            lowest_cpr_channel = sorted(allocations, key=lambda x: x["cost_per_registration"])[0]["channel"]
-            low_cpr = CHANNEL_BENCHMARKS[lowest_cpr_channel]["cpr"]
-            high_cpr = CHANNEL_BENCHMARKS[highest_cpr_channel]["cpr"]
-            regs_saved = int(500 / low_cpr) - int(500 / high_cpr)
-            opt_regs = total_forecasted_registrations + regs_saved
-            optimization_recommendation = (
-                f"Move $500 from {highest_cpr_channel} to {lowest_cpr_channel}. "
-                f"Expected registrations: {total_forecasted_registrations} -> {opt_regs}."
-            )
-            reallocation_recommendations = [
-                {
-                    "source_channel": highest_cpr_channel,
-                    "target_channel": lowest_cpr_channel,
-                    "amount": 500.0,
-                    "reason": "Lower expected Cost per Registration. Higher forecast registrations."
-                }
-            ]
-            improvement_estimate = {
-                "additional_registrations": regs_saved,
-                "new_forecasted_total": opt_regs,
-                "new_registration_gap": max(0, registration_goal - opt_regs),
-                "new_feasibility_status": "FEASIBLE" if opt_regs >= registration_goal else "RISKY"
-            }
+
+            # Apply optimized allocations if requested
+            if apply_optimization:
+                allocations = temp_allocs
+                total_forecasted_registrations = current_forecast
+                registration_gap = registration_goal - total_forecasted_registrations
+                is_feasible = total_forecasted_registrations >= registration_goal
+
     else:
         optimization_recommendation = "Current allocation is optimized. No budget shift required."
         reallocation_recommendations = []
@@ -188,6 +192,19 @@ def recommend_channels_and_allocate_budget(
             "new_registration_gap": 0,
             "new_feasibility_status": "FEASIBLE"
         }
+
+    # Final calculations after possible optimization application
+    overall_cpr = marketing_budget / total_forecasted_registrations if total_forecasted_registrations > 0 else 0.0
+    feasibility_status = "FEASIBLE" if is_feasible else "RISKY"
+    feasibility_message = (
+        f"The campaign is projected to reach {total_forecasted_registrations} registrations, "
+        f"meeting the goal of {registration_goal}."
+        if is_feasible else
+        f"The campaign is projected to reach {total_forecasted_registrations} registrations, "
+        f"leaving a gap of {registration_gap} registrations from the target goal of {registration_goal}."
+    )
+
+    confidence_score = 82.0 if is_feasible else 65.0
 
     return {
         "event_brief": {
@@ -227,6 +244,7 @@ def recommend_channels_and_allocate_budget(
                 "is_gap_present": registration_gap > 0
             },
             "reallocation_recommendations": reallocation_recommendations,
-            "improvement_estimate": improvement_estimate
+            "improvement_estimate": improvement_estimate,
+            "optimization_history": optimization_history
         }
     }

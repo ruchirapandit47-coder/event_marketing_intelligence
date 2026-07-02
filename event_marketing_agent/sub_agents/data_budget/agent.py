@@ -50,6 +50,18 @@ class ConfidenceInterval(BaseModel):
     upper_bound: int = Field(description="Upper bound registration forecast")
 
 
+class OptimizationIteration(BaseModel):
+    """An optimization shift iteration recorded during budget reallocation."""
+
+    iteration: int = Field(description="Iteration step number")
+    channel_from: str = Field(description="Channel budget was shifted from")
+    channel_to: str = Field(description="Channel budget was shifted to")
+    shifted_amount: float = Field(description="Amount shifted in USD")
+    forecast_improvement: int = Field(description="Registration increase in this step")
+    roi_improvement_percentage: float = Field(description="ROI improvement percentage in this step")
+    explanation: str = Field(description="Why this shift was made")
+
+
 class BudgetSummary(BaseModel):
     """Consolidated budget metrics and feasibility results."""
 
@@ -69,6 +81,7 @@ class BudgetSummary(BaseModel):
     registration_gap_analysis: dict = Field(description="Details on gap amount and percentage")
     reallocation_recommendations: list[dict] = Field(description="Recommended shifts to bridge gaps")
     improvement_estimate: dict = Field(description="Estimated metrics after executing suggestions")
+    optimization_history: list[OptimizationIteration] = Field(default=[], description="Iterative optimization loop history log")
 
 
 class DataBudgetOutput(BaseModel):

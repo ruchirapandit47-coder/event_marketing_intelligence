@@ -658,6 +658,31 @@ if st.session_state.approved:
         f"**Director Decision**: {risk_result.get('explanation', '')}"
     )
 
+    opt_history = summary.get("optimization_history", [])
+    if opt_history:
+        with st.expander("📊 View Iterative Optimization Steps & ROI Improvements", expanded=True):
+            st.markdown("#### Iterative Reallocation Log")
+            opt_rows = []
+            for item in opt_history:
+                step_num = item.get("iteration") if isinstance(item, dict) else item.iteration
+                ch_from = item.get("channel_from") if isinstance(item, dict) else item.channel_from
+                ch_to = item.get("channel_to") if isinstance(item, dict) else item.channel_to
+                amount = item.get("shifted_amount") if isinstance(item, dict) else item.shifted_amount
+                gain = item.get("forecast_improvement") if isinstance(item, dict) else item.forecast_improvement
+                roi_pct = item.get("roi_improvement_percentage") if isinstance(item, dict) else item.roi_improvement_percentage
+                expl = item.get("explanation") if isinstance(item, dict) else item.explanation
+
+                opt_rows.append({
+                    "Step": f"Iteration {step_num}",
+                    "Source Channel": ch_from,
+                    "Target Channel": ch_to,
+                    "Shift Amount": f"${amount:,.2f}",
+                    "Forecast Gain": f"+{gain} sign-ups",
+                    "ROI Gain": f"+{roi_pct:.1f}%",
+                    "Rationale": expl
+                })
+            st.table(pd.DataFrame(opt_rows))
+
     # Raw JSON data expander
     with st.expander("🔍 View Raw JSON Report Data", expanded=False):
         st.json({
