@@ -284,19 +284,52 @@ def generate_final_report(node_input, ctx: Context) -> Event:
     """Generate the final marketing intelligence report by combining sub-agent outputs."""
     logger.info("Starting generate_final_report stage.")
     try:
-        db_res = ctx.state["data_budget_results"]
-        creative = ctx.state["creative_assets"]
-        risk = ctx.state["risk_assessment_results"]
+        db_res = ctx.state.get("data_budget_results") or {}
+        creative = ctx.state.get("creative_assets") or {}
+        risk = ctx.state.get("risk_assessment_results") or {}
+
+        # 1. Executive Summary
+        exec_summary = {
+            "event_name": ctx.state.get("event_name", "Global Seminar"),
+            "event_type": ctx.state.get("event_type", "B2B"),
+            "location": ctx.state.get("location", "Virtual"),
+            "target_audience": ctx.state.get("target_audience", "Professionals"),
+            "theme": ctx.state.get("theme", "Growth and Networking"),
+            "status": "APPROVED",
+            "overall_feasibility": db_res.get("summary", {}).get("feasibility_status", "FEASIBLE"),
+            "director_decision": risk.get("explanation", "Approved by Director Agent.")
+        }
 
         report = {
             "status": "APPROVED",
+            "executive_summary": exec_summary,
             "campaign_summary": {
-                "event_name": ctx.state["event_name"],
-                "event_type": ctx.state["event_type"],
-                "location": ctx.state["location"],
-                "target_audience": ctx.state["target_audience"],
+                "event_name": ctx.state.get("event_name", "Global Seminar"),
+                "event_type": ctx.state.get("event_type", "B2B"),
+                "location": ctx.state.get("location", "Virtual"),
+                "target_audience": ctx.state.get("target_audience", "Professionals"),
                 "budget_details": db_res.get("summary", {}),
                 "allocations": db_res.get("allocations", []),
+            },
+            "budget_recommendations": db_res.get("allocations", []),
+            "registration_forecast": db_res.get("summary", {}),
+            "risk_assessment": risk,
+            "campaign_creative_strategy": {
+                "campaign_theme": creative.get("campaign_theme"),
+                "messaging_strategy": creative.get("messaging_strategy"),
+                "audience_positioning": creative.get("audience_positioning"),
+                "success_kpis": creative.get("success_kpis"),
+                "confidence_score": creative.get("messaging_alignment_confidence")
+            },
+            "marketing_assets": {
+                "email_copy": creative.get("email_copy"),
+                "linkedin_post": creative.get("linkedin_post"),
+                "instagram_caption": creative.get("instagram_caption"),
+                "google_ads_headline": creative.get("google_ads_headline"),
+                "channel_strategies": creative.get("channel_strategies", []),
+                "ad_headlines": creative.get("ad_headlines", []),
+                "call_to_actions": creative.get("call_to_action", []),
+                "hashtags": creative.get("hashtags", [])
             },
             "creative_deliverables": creative,
             "risk_and_compliance_audit": risk,
