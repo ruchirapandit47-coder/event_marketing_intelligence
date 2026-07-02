@@ -35,6 +35,13 @@ class AdHeadline(BaseModel):
     headline: str = Field(description="Ad headline copy")
 
 
+class StrategicRecommendation(BaseModel):
+    """A creative or copy recommendation coupled with its target audience fit reasoning."""
+
+    recommendation: str = Field(description="The creative content or strategy recommendation")
+    reasoning: str = Field(description="Why this recommendation fits the target audience")
+
+
 class CreativeStudioOutput(BaseModel):
     """Structured copywriting assets produced by the Creative Studio Agent."""
 
@@ -46,99 +53,97 @@ class CreativeStudioOutput(BaseModel):
     hashtags: list[str] = Field(description="Hashtag recommendations")
 
     # Enhanced strategy fields
-    campaign_theme: str = Field(description="Campaign theme and why it fits the selected audience")
-    messaging_strategy: str = Field(description="Messaging strategy and why it fits the selected audience")
-    audience_positioning: str = Field(description="Audience positioning and why it fits the selected audience")
-    instagram_caption: str = Field(description="Instagram caption and why it fits the selected audience")
-    linkedin_post: str = Field(description="LinkedIn post and why it fits the selected audience")
-    email_copy: str = Field(description="Email invitation copy and why it fits the selected audience")
-    google_ads_headline: str = Field(description="Google Ads headline and why it fits the selected audience")
-    success_kpis: list[str] = Field(description="Success KPIs and why they fit the selected audience")
+    campaign_theme: StrategicRecommendation = Field(description="Campaign theme and why it fits the selected audience")
+    messaging_strategy: StrategicRecommendation = Field(description="Messaging strategy and why it fits the selected audience")
+    audience_positioning: StrategicRecommendation = Field(description="Audience positioning and why it fits the selected audience")
+    instagram_caption: StrategicRecommendation = Field(description="Instagram caption and why it fits the selected audience")
+    linkedin_post: StrategicRecommendation = Field(description="LinkedIn post and why it fits the selected audience")
+    email_copy: StrategicRecommendation = Field(description="Email invitation copy and why it fits the selected audience")
+    google_ads_headline: StrategicRecommendation = Field(description="Google Ads headline and why it fits the selected audience")
+    success_kpis: list[StrategicRecommendation] = Field(description="Success KPIs and why they fit the selected audience")
 
 
 def mock_asset_generation(event_name, event_type, theme, target_audience, channels):
     """Local generator for creative copywriting assets and strategy."""
     # 1. Campaign Theme (with fit rationale)
-    campaign_theme = (
-        f"Theme: '{theme}'. "
-        f"Fit Rationale: This theme is designed for {target_audience} because it addresses their primary professional interests, "
-        f"providing direct value and networking opportunities tailored to their goals."
-    )
+    campaign_theme_rec = f"Theme: '{theme}'"
+    campaign_theme_reason = f"Addresses primary professional interests of {target_audience}, providing direct value."
     
     # 2. Messaging Strategy (with fit rationale)
-    messaging_strategy = (
-        f"Strategy: Focus on actionable growth and technology integration. "
-        f"Fit Rationale: {target_audience} values practical knowledge and case studies over generic theory. "
-        f"Positioning the messaging around concrete takeaways maximizes interest and registration intent."
-    )
+    messaging_strategy_rec = "Focus on actionable growth and technology integration."
+    messaging_strategy_reason = f"{target_audience} values practical knowledge and case studies over generic theory."
     
     # 3. Audience Positioning (with fit rationale)
-    audience_positioning = (
-        f"Positioning: Position the event as the premier gathering for {target_audience} in this region. "
-        f"Fit Rationale: Emphasizing exclusivity and industry-peer networking builds FOMO (Fear Of Missing Out) "
-        f"which drives conversions for {target_audience}."
-    )
+    audience_positioning_rec = f"Position the event as the premier gathering for {target_audience} in this region."
+    audience_positioning_reason = "Emphasizing exclusivity and industry-peer networking builds FOMO, which drives conversions."
     
     # 4. Instagram Caption (with fit rationale)
-    instagram_caption_str = (
-        f"Caption: Ready to unlock the future of '{theme}'? Join us at '{event_name}'! "
-        f"Connect with leading experts and peers. Link in bio! 📲 #{event_type.lower()}\n\n"
-        f"Fit Rationale: Instagram's visual format combined with a strong direct hook engages {target_audience} "
-        f"who search for trending topics via hashtags and interactive bio links."
-    )
+    instagram_caption_rec = f"Ready to unlock the future of '{theme}'? Join us at '{event_name}'! Connect with leading experts. Link in bio! 📲 #{event_type.lower()}"
+    instagram_caption_reason = f"Instagram's visual format combined with hashtags engages {target_audience} actively looking for trending topics."
     
     # 5. LinkedIn Post (with fit rationale)
-    linkedin_post_str = (
-        f"Post: Announcing '{event_name}'! We are bringing together leading minds to discuss '{theme}'.\n\n"
-        f"Key Takeaways:\n"
-        f"• Network with other {target_audience} professionals.\n"
-        f"• Gain actionable strategies on modern frameworks.\n"
-        f"• Participate in live developer Q&As.\n\n"
-        f"👉 Register today: [Link]\n\n"
-        f"Fit Rationale: LinkedIn's professional user base of {target_audience} expects structured, bulleted value pillars "
-        f"and networking-centric copy."
-    )
+    linkedin_post_rec = f"Announcing '{event_name}'! We are bringing together leading minds to discuss '{theme}'. Gain actionable strategies and network with other {target_audience} professionals. Register today! 👉 [Link]"
+    linkedin_post_reason = f"LinkedIn's professional user base of {target_audience} expects structured value pillars and networking opportunities."
     
     # 6. Email Invitation (with fit rationale)
-    email_invitation_str = (
+    email_invitation_rec = (
         f"Subject: Exclusive Invitation: {event_name} - {theme[:40]}...\n\n"
         f"Dear Colleague,\n\n"
         f"We are pleased to invite you to '{event_name}', an exclusive gathering for {target_audience} "
-        f"focused on '{theme}'.\n\n"
-        f"Event details:\n"
-        f"• Event: {event_name}\n"
-        f"• Main Topic: {theme}\n\n"
-        f"Warm regards,\nThe Event Organizing Committee\n\n"
-        f"Fit Rationale: Direct email offers a personal invite format that resonates with {target_audience} "
-        f"who prioritize curated calendars and private invitations."
+        f"focused on '{theme}'.\n\nWarm regards,\nThe Event Organizing Committee"
     )
+    email_invitation_reason = f"Direct email offers a personal invite format that resonates with {target_audience} who prioritize curated calendars."
     
     # 7. Google Ads Headline (with fit rationale)
-    google_ads_headline_str = (
-        f"Headline: Register for {event_name} | {theme[:20]}\n\n"
-        f"Fit Rationale: Google Search ads capture intent-driven searches from {target_audience} "
-        f"actively looking for resource topics related to '{theme}'."
-    )
+    google_ads_headline_rec = f"Register for {event_name} | {theme[:20]}"
+    google_ads_headline_reason = f"Google Search ads capture intent-driven searches from {target_audience} actively looking for resource topics."
 
     return {
         # Structured strategy outputs
-        "campaign_theme": campaign_theme,
-        "messaging_strategy": messaging_strategy,
-        "audience_positioning": audience_positioning,
-        "instagram_caption": instagram_caption_str,
-        "linkedin_post": linkedin_post_str,
-        "email_copy": email_invitation_str,
-        "google_ads_headline": google_ads_headline_str,
+        "campaign_theme": {
+            "recommendation": campaign_theme_rec,
+            "reasoning": campaign_theme_reason
+        },
+        "messaging_strategy": {
+            "recommendation": messaging_strategy_rec,
+            "reasoning": messaging_strategy_reason
+        },
+        "audience_positioning": {
+            "recommendation": audience_positioning_rec,
+            "reasoning": audience_positioning_reason
+        },
+        "instagram_caption": {
+            "recommendation": instagram_caption_rec,
+            "reasoning": instagram_caption_reason
+        },
+        "linkedin_post": {
+            "recommendation": linkedin_post_rec,
+            "reasoning": linkedin_post_reason
+        },
+        "email_copy": {
+            "recommendation": email_invitation_rec,
+            "reasoning": email_invitation_reason
+        },
+        "google_ads_headline": {
+            "recommendation": google_ads_headline_rec,
+            "reasoning": google_ads_headline_reason
+        },
         "success_kpis": [
-            f"Registration conversion rate from professional posts (Target: > 8%). Fits {target_audience}'s social sign-up patterns.",
-            f"Email RSVP confirmation click-through (Target: > 15%). Fits {target_audience}'s inbox responsiveness."
+            {
+                "recommendation": "Registration conversion rate from professional posts (Target: > 8%)",
+                "reasoning": f"Fits {target_audience}'s social sign-up patterns."
+            },
+            {
+                "recommendation": "Email RSVP confirmation click-through (Target: > 15%)",
+                "reasoning": f"Fits {target_audience}'s inbox responsiveness."
+            }
         ],
         
         # UI backward-compatible fields
-        "instagram_captions": [instagram_caption_str],
-        "linkedin_posts": [linkedin_post_str],
-        "email_invitation": email_invitation_str,
-        "ad_headlines": [{"channel": "Google Search Ads", "headline": f"Register for {event_name}"}],
+        "instagram_captions": [f"{instagram_caption_rec}\n\nFit Rationale: {instagram_caption_reason}"],
+        "linkedin_posts": [f"{linkedin_post_rec}\n\nFit Rationale: {linkedin_post_reason}"],
+        "email_invitation": f"{email_invitation_rec}\n\nFit Rationale: {email_invitation_reason}",
+        "ad_headlines": [{"channel": "Google Search Ads", "headline": google_ads_headline_rec}],
         "call_to_action": [
             f"Register Now (Direct & high-intent, fits {target_audience} preferences)",
             f"Confirm RSVP (Exclusivity-based, fits curated calendar preferences)"

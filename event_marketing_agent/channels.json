@@ -2,37 +2,37 @@
   "channels": {
     "LinkedIn Ads": {
       "cpr": 85.0,
-      "description": "Best suited for B2B professionals.",
+      "description": "Selected because it provides high-precision targeting for B2B professionals, driving high expected ROI for corporate audiences despite a higher Cost-Per-Registration of $85.00.",
       "priority": 1
     },
     "Google Search Ads": {
       "cpr": 45.0,
-      "description": "High intent audience. Strong conversion rate for this event type.",
+      "description": "Selected because it captures high-intent searches from prospects actively seeking topics, offering strong conversion rates and a balanced Cost-Per-Registration of $45.00.",
       "priority": 2
     },
     "Meta Ads (FB/IG)": {
       "cpr": 35.0,
-      "description": "High reach and engagement for community and consumer events.",
+      "description": "Selected because it reaches broad consumer/community audiences with high visual engagement, maintaining a low Cost-Per-Registration of $35.00 and solid ROI.",
       "priority": 3
     },
     "Tech Newsletters": {
       "cpr": 50.0,
-      "description": "Direct access to high-intent developer and technology audiences.",
+      "description": "Selected because it directly reaches niche developer/technology audiences with pre-established trust, leading to high-quality leads at a Cost-Per-Registration of $50.00.",
       "priority": 4
     },
     "TikTok Ads": {
       "cpr": 25.0,
-      "description": "Low Cost-Per-Registration. Excellent for capturing younger demographics.",
+      "description": "Selected because it offers low-cost, short-form video reach for youth/consumer segments, optimizing budget with a low Cost-Per-Registration of $25.00.",
       "priority": 5
     },
     "Email Marketing": {
       "cpr": 10.0,
-      "description": "Lowest Cost-Per-Registration. Drives high volume of low-cost sign-ups.",
+      "description": "Selected because it leverages owned lists for maximum ROI, delivering low-cost sign-ups at a minimal Cost-Per-Registration of $10.00.",
       "priority": 6
     },
     "Local Event Listings": {
       "cpr": 15.0,
-      "description": "Effective for localized regional traffic.",
+      "description": "Selected because it targets hyper-local community traffic for regional events, offering cheap localized conversions at a Cost-Per-Registration of $15.00.",
       "priority": 7
     }
   },

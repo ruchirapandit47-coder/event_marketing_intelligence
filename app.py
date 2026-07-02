@@ -628,9 +628,15 @@ if st.session_state.approved:
 
     # Creative Summary
     st.markdown("### 🎨 Campaign Creative Strategy")
-    st.markdown(f"**Campaign Theme Rationale**: {assets.get('campaign_theme', 'N/A')}")
-    st.markdown(f"**Messaging Rationale**: {assets.get('messaging_strategy', 'N/A')}")
-    st.markdown(f"**Audience Positioning**: {assets.get('audience_positioning', 'N/A')}")
+    
+    def render_strategic_rec(val):
+        if isinstance(val, dict):
+            return f"**Recommendation**: {val.get('recommendation')}  \n**Reasoning**: *{val.get('reasoning')}*"
+        return str(val)
+
+    st.markdown(f"**Campaign Theme**  \n{render_strategic_rec(assets.get('campaign_theme', 'N/A'))}")
+    st.markdown(f"**Messaging Strategy**  \n{render_strategic_rec(assets.get('messaging_strategy', 'N/A'))}")
+    st.markdown(f"**Audience Positioning**  \n{render_strategic_rec(assets.get('audience_positioning', 'N/A'))}")
     
     # Final Recommendation
     st.markdown("### 📝 Final Strategic Recommendation")

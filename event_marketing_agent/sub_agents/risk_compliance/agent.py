@@ -41,6 +41,13 @@ class ContentAudit(BaseModel):
     issues: list[str] = Field(description="List of issues identified")
 
 
+class CorrectiveAction(BaseModel):
+    """A risk mitigation recommendation coupled with its threat reduction reasoning."""
+
+    recommendation: str = Field(description="Action recommendation text")
+    reasoning: str = Field(description="Why this recommendation reduces the risk")
+
+
 class RiskComplianceOutput(BaseModel):
     """Structured audit report returned by the Risk & Compliance Agent."""
 
@@ -54,7 +61,7 @@ class RiskComplianceOutput(BaseModel):
     # Enhanced Risk & Compliance fields
     risk_score: float = Field(description="Numerical risk score (0-100)")
     risk_factors: list[str] = Field(description="Detailed explanations of every risk factor")
-    corrective_actions: list[str] = Field(description="Recommended corrective actions")
+    corrective_actions: list[CorrectiveAction] = Field(description="Recommended corrective actions and rationales")
     expected_improvement: dict = Field(description="Estimated improvement if recommendations are followed")
 
 
