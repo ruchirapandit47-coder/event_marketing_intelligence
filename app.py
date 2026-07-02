@@ -415,8 +415,24 @@ if st.session_state.generated:
     summary = db_result.get("summary", {})
 
 # DISPLAY DASHBOARD CONTENT
+# Executive Summary section at the top
+st.markdown("<div class='section-header'>📋 Campaign Executive Summary</div>", unsafe_allow_html=True)
+st.write(
+    f"The orchestrator workflow has finalized campaign planning for **{event_name}** ({event_type}). "
+    f"Below is a strategic analysis of budgets, channels, asset copies, and compliance risk parameters."
+)
+
+st.divider()
+
 # Section 1: Executive KPI Cards
 st.markdown("<div class='section-header'>📊 Executive Campaign Metrics</div>", unsafe_allow_html=True)
+
+# Render progress bar for confidence
+conf_score = summary.get("confidence_score", 82.0)
+conf_level = summary.get("forecast_confidence", {}).get("confidence_level", "High")
+st.markdown(f"**Forecast Confidence Level**: `{conf_level}` ({conf_score}% score)")
+st.progress(int(conf_score))
+
 col1, col2, col3, col4 = st.columns(4)
 
 with col1:
@@ -429,7 +445,6 @@ with col1:
 
 with col2:
     regs_display = f"{summary['total_estimated_registrations']} / {summary['registration_goal']}"
-    # Color check for target met
     color = "#137333" if summary['registration_gap'] == 0 else "#c5221f"
     st.markdown(f"""
     <div class='metric-card' style='border-left-color: {color};'>
@@ -447,13 +462,16 @@ with col3:
     """, unsafe_allow_html=True)
 
 with col4:
-    risk_color = "#137333" if risk_result['risk_category'] == "LOW RISK" else ("#f29900" if risk_result['risk_category'] == "MEDIUM RISK" else "#c5221f")
+    risk_score = risk_result.get("risk_score", 0.0)
+    risk_color = "#137333" if risk_score <= 10.0 else ("#f29900" if risk_score <= 35.0 else "#c5221f")
     st.markdown(f"""
     <div class='metric-card' style='border-left-color: {risk_color};'>
-        <div class='metric-label'>Campaign Risk Rating</div>
-        <div class='metric-value' style='color: {risk_color};'>{risk_result['risk_category']}</div>
+        <div class='metric-label'>Numerical Risk Score</div>
+        <div class='metric-value' style='color: {risk_color};'>{risk_score} / 100</div>
     </div>
     """, unsafe_allow_html=True)
+
+st.divider()
 
 # Main Grid: Charts & Recommendations
 grid_col1, grid_col2 = st.columns([1, 1])
@@ -491,6 +509,8 @@ with grid_col2:
     fig_bar.update_layout(margin=dict(t=40, b=20, l=0, r=0), height=300, showlegend=False)
     st.plotly_chart(fig_bar, use_container_width=True)
 
+st.divider()
+
 # Panels: Channel Recommendations & Risk Audits
 panel_col1, panel_col2 = st.columns([3, 2])
 
@@ -501,32 +521,38 @@ with panel_col1:
             f"**{a['channel']}** (Allocation Ratio: {round(a['allocation_ratio']*100)}% | Budget: **${a['budget']:,.2f}**)\n"
             f"- *CPA Baseline*: ${a['cost_per_registration']:.2f} per registration\n"
             f"- *Target registrations*: **{a['estimated_registrations']}** sign-ups\n"
-            f"- *Role*: {a['description']}\n"
         )
+        with st.expander(f"🔍 View selection rationale for {a['channel']}", expanded=False):
+            st.write(a.get("selection_rationale", a.get("description", "Selected based on audience targets.")))
 
 with panel_col2:
     st.markdown("<div class='section-header'>⚠️ Risk Assessment & Warnings</div>", unsafe_allow_html=True)
     
     # Risk banner and alerts
-    if risk_result['risk_category'] == "LOW RISK":
-        st.success(f"🟢 **LOW RISK**: {risk_result['explanation']}")
-    elif risk_result['risk_category'] == "MEDIUM RISK":
-        st.warning(f"🟡 **MEDIUM RISK**: {risk_result['explanation']}")
+    risk_score = risk_result.get("risk_score", 0.0)
+    risk_cat = risk_result.get("risk_category", "LOW RISK")
+    if risk_score <= 10.0:
+        st.success(f"🟢 **LOW RISK** (Score: {risk_score}/100): {risk_result['explanation']}")
+    elif risk_score <= 35.0:
+        st.warning(f"🟡 **MEDIUM RISK** (Score: {risk_score}/100): {risk_result['explanation']}")
     else:
-        st.error(f"🔴 **HIGH RISK**: {risk_result['explanation']}")
+        st.error(f"🔴 **HIGH RISK** (Score: {risk_score}/100): {risk_result['explanation']}")
         
-    if risk_result['warnings']:
-        st.markdown("**Compliance Warnings Issued:**")
-        for warning in risk_result['warnings']:
-            st.markdown(f"- ⚠️ *{warning}*")
+    if risk_result.get('risk_factors'):
+        with st.expander("🔍 Explanatory Risk Factors", expanded=True):
+            for factor in risk_result['risk_factors']:
+                st.markdown(f"- ⚠️ *{factor}*")
             
     # Shortfall calculation and display
+    gap_analysis = summary.get("registration_gap_analysis", {})
     st.metric(
         label="Registration shortfalls (%)",
-        value=f"{risk_result['shortfall_percentage']}%",
+        value=f"{gap_analysis.get('gap_percentage', risk_result['shortfall_percentage'])}%",
         delta=f"{summary['registration_gap']} registrations gap" if summary['registration_gap'] > 0 else None,
         delta_color="inverse"
     )
+
+st.divider()
 
 # Section: Generated Creative Assets
 st.markdown("<div class='section-header'>🎨 Generated Campaign Assets (Creative Studio)</div>", unsafe_allow_html=True)
@@ -534,17 +560,17 @@ tab1, tab2, tab3, tab4 = st.tabs(["📧 Email Copy", "🔗 LinkedIn Posts", "�
 
 with tab1:
     st.markdown("**Email Invitation Draft**")
-    st.markdown(f"<div class='asset-box'>{assets['email_invitation']}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='asset-box'>{assets.get('email_invitation', assets.get('email_copy', ''))}</div>", unsafe_allow_html=True)
 
 with tab2:
     st.markdown("**LinkedIn Posts**")
-    for i, post in enumerate(assets['linkedin_posts']):
+    for i, post in enumerate(assets.get('linkedin_posts', [assets.get('linkedin_post', '')])):
         st.markdown(f"*Post Option {i+1}*")
         st.markdown(f"<div class='asset-box'>{post}</div>", unsafe_allow_html=True)
 
 with tab3:
     st.markdown("**Instagram Captions**")
-    for i, caption in enumerate(assets['instagram_captions']):
+    for i, caption in enumerate(assets.get('instagram_captions', [assets.get('instagram_caption', '')])):
         st.markdown(f"*Caption Option {i+1}*")
         st.markdown(f"<div class='asset-box'>{caption}</div>", unsafe_allow_html=True)
 
@@ -553,13 +579,13 @@ with tab4:
     col_ad1, col_ad2 = st.columns(2)
     with col_ad1:
         st.markdown("*Recommended Headlines:*")
-        for h in assets['ad_headlines']:
+        for h in assets.get('ad_headlines', [{"channel": "Google Search Ads", "headline": assets.get("google_ads_headline", "")}]):
             st.markdown(f"- **{h['channel']}**: `{h['headline']}`")
     with col_ad2:
         st.markdown("*Call-to-Action Suggestions:*")
-        for cta in assets['call_to_action']:
+        for cta in assets.get('call_to_action', []):
             st.markdown(f"- `{cta}`")
-        st.markdown(f"*Recommended Hashtags*: {', '.join(assets['hashtags'])}")
+        st.markdown(f"*Recommended Hashtags*: {', '.join(assets.get('hashtags', []))}")
 # Section: Approval Workflow
 st.markdown("<div class='section-header'>🔐 Campaign Approval Workflow</div>", unsafe_allow_html=True)
 
