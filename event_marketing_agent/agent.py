@@ -46,12 +46,7 @@ def parse_brief(node_input: dict, ctx: Context) -> Event:
 
 
 def goal_analysis(node_input: dict, ctx: Context) -> Event:
-    """Perform campaign goal analysis and calculate limits."""
-    budget = ctx.state["marketing_budget"]
-    goal = ctx.state["registration_goal"]
-    target_cpa_limit = budget / goal if goal > 0 else 0.0
-    ctx.state["target_cpa_limit"] = target_cpa_limit
-
+    """Analyze campaign brief attributes and prepare inputs for the Data & Budget agent."""
     # Prepare input for the Data & Budget agent
     db_input = {
         "event_name": ctx.state["event_name"],
