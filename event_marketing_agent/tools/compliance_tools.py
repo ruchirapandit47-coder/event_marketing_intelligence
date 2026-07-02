@@ -106,7 +106,14 @@ def evaluate_campaign_risks(
             "specifically defined for accurate campaign targeting."
         )
 
-    # 5. Risk Score and Categorization based on Shortfall and warnings
+    # 5. Forecast Confidence Check
+    conf_score = summary.get("confidence_score", 100.0)
+    if conf_score < 70.0:
+        warnings.append(
+            f"Low forecast confidence ({conf_score}%): The recommended allocation mix has high volatility risk."
+        )
+
+    # 6. Risk Score and Categorization based on Shortfall and warnings
     registration_gap = summary.get("registration_gap", 0)
     shortfall_percentage = (registration_gap / registration_goal * 100.0) if registration_goal > 0 else 0.0
     

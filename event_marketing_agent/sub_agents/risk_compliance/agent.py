@@ -17,6 +17,7 @@
 from google.adk import Event, Context
 from pydantic import BaseModel, Field
 from ...tools.compliance_tools import evaluate_campaign_risks
+from ..data_budget.agent import ChannelAllocation, BudgetSummary
 
 
 class RiskComplianceInput(BaseModel):
@@ -27,8 +28,8 @@ class RiskComplianceInput(BaseModel):
     target_audience: str = Field(description="Target audience demographics/roles")
     marketing_budget: float = Field(description="Total marketing budget in USD")
     registration_goal: int = Field(description="Target number of registrations")
-    allocations: list[dict] = Field(description="List of budget allocations per channel")
-    summary: dict = Field(description="Consolidated budget summary and forecast details")
+    allocations: list[ChannelAllocation] = Field(description="List of budget allocations per channel")
+    summary: BudgetSummary = Field(description="Consolidated budget summary and forecast details")
     email_invitation: str = Field(description="Email invitation copy text")
     linkedin_posts: list[str] = Field(description="LinkedIn post texts")
 

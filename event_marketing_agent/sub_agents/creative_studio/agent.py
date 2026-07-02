@@ -26,6 +26,7 @@ class CreativeStudioInput(BaseModel):
     theme: str = Field(description="Theme or description of the event")
     target_audience: str = Field(description="Target audience demographics/roles")
     channels: list[str] = Field(description="List of marketing channels that were recommended")
+    risk_assessment: dict = Field(default={}, description="Audit risk assessment parameters")
 
 
 class AdHeadline(BaseModel):
@@ -64,16 +65,27 @@ class CreativeStudioOutput(BaseModel):
     messaging_alignment_confidence: float = Field(description="Confidence score that selected messaging aligns with target audience (0-100)")
 
 
-def mock_asset_generation(event_name, event_type, theme, target_audience, channels):
-    """Local generator for creative copywriting assets and strategy."""
+def mock_asset_generation(event_name, event_type, theme, target_audience, channels, risk_assessment=None):
+    """Local generator for creative copywriting assets and strategy, adapted based on audit risk checks."""
+    risk_assessment = risk_assessment or {}
+    risk_score = risk_assessment.get("risk_score", 0.0)
+    warnings = risk_assessment.get("warnings", [])
+
     # 1. Campaign Theme (with fit rationale)
     campaign_theme_rec = f"Theme: '{theme}'"
     campaign_theme_reason = f"Addresses primary professional interests of {target_audience}, providing direct value."
     
-    # 2. Messaging Strategy (with fit rationale)
+    # 2. Messaging Strategy (with fit rationale, dynamically adapted by risk results)
     messaging_strategy_rec = "Focus on actionable growth and technology integration."
     messaging_strategy_reason = f"{target_audience} values practical knowledge and case studies over generic theory."
     
+    if risk_score > 35.0:
+        messaging_strategy_rec += " Mitigate shortfall risk by prioritizing low-cost organic email list referral loops."
+        messaging_strategy_reason += " Adjusts to address strict budget limitations flagged by the risk compliance audit."
+    elif warnings:
+        messaging_strategy_rec += " Adjust messaging to emphasize lower Cost-Per-Registration campaigns."
+        messaging_strategy_reason += " Helps buffer the target CPA deviations flagged during risk review."
+
     # 3. Audience Positioning (with fit rationale)
     audience_positioning_rec = f"Position the event as the premier gathering for {target_audience} in this region."
     audience_positioning_reason = "Emphasizing exclusivity and industry-peer networking builds FOMO, which drives conversions."
@@ -186,7 +198,8 @@ def creative_studio_agent(node_input: dict, ctx: Context) -> Event:
         event_type=node_input["event_type"],
         theme=node_input["theme"],
         target_audience=node_input["target_audience"],
-        channels=node_input["channels"]
+        channels=node_input["channels"],
+        risk_assessment=node_input.get("risk_assessment", {})
     )
     
     # Run self-validation review

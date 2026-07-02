@@ -60,9 +60,8 @@ def goal_analysis(node_input: dict, ctx: Context) -> Event:
     return Event(output=db_input)
 
 
-def prepare_creative_input(node_input, ctx: Context) -> Event:
-    """Save data budget forecast and prepare inputs for Creative Studio."""
-    # Convert Pydantic output to dict
+def prepare_risk_input(node_input, ctx: Context) -> Event:
+    """Save data budget forecast and prepare inputs for Risk & Compliance."""
     if hasattr(node_input, "model_dump"):
         node_input = node_input.model_dump()
     elif hasattr(node_input, "dict"):
@@ -70,41 +69,55 @@ def prepare_creative_input(node_input, ctx: Context) -> Event:
 
     ctx.state["data_budget_results"] = node_input
 
-    channels = [alloc.get("channel") for alloc in node_input.get("allocations", [])]
-
-    creative_input = {
-        "event_name": ctx.state["event_name"],
-        "event_type": ctx.state["event_type"],
-        "theme": ctx.state["theme"],
-        "target_audience": ctx.state["target_audience"],
-        "channels": channels
-    }
-    return Event(output=creative_input)
-
-
-def prepare_risk_input(node_input, ctx: Context) -> Event:
-    """Save creative studio assets and prepare inputs for Risk & Compliance."""
-    if hasattr(node_input, "model_dump"):
-        node_input = node_input.model_dump()
-    elif hasattr(node_input, "dict"):
-        node_input = node_input.dict()
-
-    ctx.state["creative_assets"] = node_input
-
-    db_res = ctx.state["data_budget_results"]
-    
     risk_input = {
         "event_name": ctx.state["event_name"],
         "event_type": ctx.state["event_type"],
         "target_audience": ctx.state["target_audience"],
         "marketing_budget": ctx.state["marketing_budget"],
         "registration_goal": ctx.state["registration_goal"],
-        "allocations": db_res.get("allocations", []),
-        "summary": db_res.get("summary", {}),
-        "email_invitation": node_input.get("email_invitation", ""),
-        "linkedin_posts": node_input.get("linkedin_posts", [])
+        "allocations": node_input.get("allocations", []),
+        "summary": node_input.get("summary", {}),
+        "email_invitation": "",
+        "linkedin_posts": []
     }
     return Event(output=risk_input)
+
+
+def prepare_creative_input(node_input, ctx: Context) -> Event:
+    """Save risk assessment and prepare inputs for Creative Studio."""
+    if hasattr(node_input, "model_dump"):
+        node_input = node_input.model_dump()
+    elif hasattr(node_input, "dict"):
+        node_input = node_input.dict()
+
+    ctx.state["risk_assessment_results"] = node_input
+
+    db_res = ctx.state["data_budget_results"]
+    channels = [alloc.get("channel") for alloc in db_res.get("allocations", [])]
+
+    creative_input = {
+        "event_name": ctx.state["event_name"],
+        "event_type": ctx.state["event_type"],
+        "theme": ctx.state["theme"],
+        "target_audience": ctx.state["target_audience"],
+        "channels": channels,
+        "risk_assessment": node_input
+    }
+    return Event(output=creative_input)
+
+
+def prepare_route_input(node_input, ctx: Context) -> Event:
+    """Save creative studio assets and extract risk assessment for routing."""
+    if hasattr(node_input, "model_dump"):
+        node_input = node_input.model_dump()
+    elif hasattr(node_input, "dict"):
+        node_input = node_input.dict()
+
+    ctx.state["creative_assets"] = node_input
+    
+    # Retrieve risk assessment results from state to route by
+    risk_res = ctx.state["risk_assessment_results"]
+    return Event(output=risk_res)
 
 
 def route_by_risk(node_input, ctx: Context) -> Event:
@@ -220,17 +233,19 @@ root_agent = Workflow(
         ("START", parse_brief, goal_analysis),
         # 2. Goal Analysis -> Data & Budget Agent (recommends channels, allocates budget, forecasts registrations)
         (goal_analysis, data_budget_agent),
-        # 3. Data & Budget Agent -> Prepare Creative Input
-        (data_budget_agent, prepare_creative_input),
-        # 4. Prepare Creative Input -> Creative Studio Agent (generates copywriting assets)
-        (prepare_creative_input, creative_studio_agent),
-        # 5. Creative Studio Agent -> Prepare Risk Input
-        (creative_studio_agent, prepare_risk_input),
-        # 6. Prepare Risk Input -> Risk & Compliance Agent (assesses shortfall and content)
+        # 3. Data & Budget Agent -> Prepare Risk Input
+        (data_budget_agent, prepare_risk_input),
+        # 4. Prepare Risk Input -> Risk & Compliance Agent (evaluates compliance warnings)
         (prepare_risk_input, risk_compliance_agent),
-        # 7. Risk & Compliance Agent -> Route By Risk
-        (risk_compliance_agent, route_by_risk),
-        # 8. Route By Risk split:
+        # 5. Risk & Compliance Agent -> Prepare Creative Input
+        (risk_compliance_agent, prepare_creative_input),
+        # 6. Prepare Creative Input -> Creative Studio Agent (generates copywriting strategy adapted to risk)
+        (prepare_creative_input, creative_studio_agent),
+        # 7. Creative Studio Agent -> Prepare Route Input
+        (creative_studio_agent, prepare_route_input),
+        # 8. Prepare Route Input -> Route By Risk
+        (prepare_route_input, route_by_risk),
+        # 9. Route By Risk split:
         #    - LOW RISK -> Go straight to final report
         #    - REQUIRES_APPROVAL -> Route to human approval (RequestInput)
         (
@@ -240,7 +255,7 @@ root_agent = Workflow(
                 "REQUIRES_APPROVAL": request_human_approval,
             },
         ),
-        # 9. Human Approval -> Approval router
+        # 10. Human Approval -> Approval router
         (request_human_approval, process_approval_decision),
         (
             process_approval_decision,
@@ -249,7 +264,7 @@ root_agent = Workflow(
                 "REJECTED": adjust_brief_and_reallocate,
             },
         ),
-        # 10. Loopback: Adjust brief & reallocate -> Data & Budget Agent
+        # 11. Loopback: Adjust brief & reallocate -> Data & Budget Agent
         (adjust_brief_and_reallocate, data_budget_agent),
     ],
 )

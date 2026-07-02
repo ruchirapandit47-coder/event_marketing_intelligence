@@ -21,8 +21,12 @@ from google.adk import Context
 from event_marketing_agent.agent import (
     parse_brief,
     goal_analysis,
-    prepare_creative_input,
+    data_budget_agent,
     prepare_risk_input,
+    risk_compliance_agent,
+    prepare_creative_input,
+    creative_studio_agent,
+    prepare_route_input,
     route_by_risk,
     generate_final_report,
 )
@@ -79,51 +83,40 @@ def execute_workflow_simulation(scenario_name: str, brief: dict) -> None:
     
     # Node 3: data_budget_agent (simulating tool run)
     print("[Node 3] Executing: data_budget_agent (allocating budget & forecasting)...")
-    db_output = recommend_channels_and_allocate_budget(
-        event_type=goal_out["event_type"],
-        target_audience=goal_out["target_audience"],
-        marketing_budget=goal_out["marketing_budget"],
-        registration_goal=goal_out["registration_goal"],
-        apply_optimization=goal_out.get("apply_optimization", False)
-    )
+    db_event = data_budget_agent(goal_out, ctx)
+    db_output = db_event.output
     
-    # Node 4: prepare_creative_input
-    print("[Node 4] Executing: prepare_creative_input")
-    creative_in = prepare_creative_input(db_output, ctx).output
+    # Node 4: prepare_risk_input
+    print("[Node 4] Executing: prepare_risk_input")
+    risk_in = prepare_risk_input(db_output, ctx).output
     
-    # Node 5: creative_studio_agent (simulating creative generation)
-    print("[Node 5] Executing: creative_studio_agent (generating assets)...")
-    assets_output = test_asset_generation(
-        event_name=creative_in["event_name"],
-        target_audience=creative_in["target_audience"],
-        theme=creative_in["theme"]
-    )
+    # Node 5: risk_compliance_agent
+    print("[Node 5] Executing: risk_compliance_agent (evaluating compliance & risks)...")
+    risk_event = risk_compliance_agent(risk_in, ctx)
+    risk_output = risk_event.output
     
-    # Node 6: prepare_risk_input
-    print("[Node 6] Executing: prepare_risk_input")
-    risk_in = prepare_risk_input(assets_output, ctx).output
+    # Node 6: prepare_creative_input
+    print("[Node 6] Executing: prepare_creative_input")
+    creative_in = prepare_creative_input(risk_output, ctx).output
     
-    # Node 7: risk_compliance_agent (simulating risk analysis tool run)
-    print("[Node 7] Executing: risk_compliance_agent (evaluating compliance & risks)...")
-    risk_output = evaluate_campaign_risks(
-        event_name=risk_in["event_name"],
-        event_type=brief["event_type"],
-        target_audience=brief["target_audience"],
-        marketing_budget=brief["marketing_budget"],
-        registration_goal=risk_in["registration_goal"],
-        allocations=db_output["allocations"],
-        summary=db_output["summary"]
-    )
+    # Node 7: creative_studio_agent (generating assets)
+    print("[Node 7] Executing: creative_studio_agent (generating assets)...")
+    assets_event = creative_studio_agent(creative_in, ctx)
+    assets_output = assets_event.output
     
-    # Node 8: route_by_risk
-    print("[Node 8] Executing: route_by_risk")
-    route_event = route_by_risk(risk_output, ctx)
+    # Node 8: prepare_route_input
+    print("[Node 8] Executing: prepare_route_input")
+    route_in = prepare_route_input(assets_output, ctx).output
+    
+    # Node 9: route_by_risk
+    print("[Node 9] Executing: route_by_risk")
+    route_event = route_by_risk(route_in, ctx)
     route = route_event.actions.route
     print(f"  Routing decision: {route}")
     
     if route == "LOW_RISK":
-        # Node 9: generate_final_report
-        print("[Node 9] Executing: generate_final_report (Bypassing Human approval)")
+        # Node 10: generate_final_report
+        print("[Node 10] Executing: generate_final_report (Bypassing Human approval)")
         report_event = generate_final_report(None, ctx)
         report = report_event.output
         print(f"  Campaign Status: {report['status']}")
@@ -148,28 +141,21 @@ def execute_workflow_simulation(scenario_name: str, brief: dict) -> None:
         reallocate_out = goal_analysis(brief_out, ctx).output # retrieve optimized config
         
         print("[Node 3-Loop] Executing: data_budget_agent (optimized run)...")
-        db_output_opt = recommend_channels_and_allocate_budget(
-            event_type=reallocate_out["event_type"],
-            target_audience=reallocate_out["target_audience"],
-            marketing_budget=reallocate_out["marketing_budget"],
-            registration_goal=reallocate_out["registration_goal"],
-            apply_optimization=True
-        )
+        db_event_opt = data_budget_agent(reallocate_out, ctx)
+        db_output_opt = db_event_opt.output
+        
+        print("[Node 4-Loop] Executing: prepare_risk_input...")
+        risk_in_opt = prepare_risk_input(db_output_opt, ctx).output
         
         print("[Node 7-Loop] Executing: risk_compliance_agent (optimized run)...")
-        risk_output_opt = evaluate_campaign_risks(
-            event_name=brief["event_name"],
-            event_type=brief["event_type"],
-            target_audience=brief["target_audience"],
-            marketing_budget=brief["marketing_budget"],
-            registration_goal=brief["registration_goal"],
-            allocations=db_output_opt["allocations"],
-            summary=db_output_opt["summary"]
-        )
+        risk_event_opt = risk_compliance_agent(risk_in_opt, ctx)
+        risk_output_opt = risk_event_opt.output
         
-        # Update results in context
-        ctx.state["data_budget_results"] = db_output_opt
-        ctx.state["risk_assessment_results"] = risk_output_opt
+        print("[Node 8-Loop] Executing: prepare_creative_input & creative_studio_agent (optimized run)...")
+        creative_in_opt = prepare_creative_input(risk_output_opt, ctx).output
+        assets_event_opt = creative_studio_agent(creative_in_opt, ctx)
+        assets_output_opt = assets_event_opt.output
+        prepare_route_input(assets_output_opt, ctx)
         
         print("[Node 9-Loop] Executing: generate_final_report (After optimization approval)")
         report_event = generate_final_report(None, ctx)
