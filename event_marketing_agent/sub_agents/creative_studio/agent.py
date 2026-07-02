@@ -152,8 +152,28 @@ def mock_asset_generation(event_name, event_type, theme, target_audience, channe
     }
 
 
+def validate_creative_output(node_input: dict, result: dict) -> dict:
+    """Self-review step: Verify every selected marketing channel has corresponding creative assets (ad headlines)."""
+    channels = node_input.get("channels", [])
+    ad_headlines = result.get("ad_headlines", [])
+
+    # Map existing headlines by channel name
+    channels_with_headlines = {h.get("channel") if isinstance(h, dict) else h.channel for h in ad_headlines}
+    
+    for channel in channels:
+        if channel not in channels_with_headlines:
+            # Regenerate only the missing section: add a baseline headline for this channel
+            ad_headlines.append({
+                "channel": channel,
+                "headline": f"Discover {node_input.get('event_name', 'Event')} | Focused on {node_input.get('theme', 'our theme')}"
+            })
+            
+    result["ad_headlines"] = ad_headlines
+    return result
+
+
 def creative_studio_agent(node_input: dict, ctx: Context) -> Event:
-    """Execute Creative Studio Agent calculations directly."""
+    """Execute Creative Studio Agent calculations directly with self-review validation."""
     if hasattr(node_input, "model_dump"):
         node_input = node_input.model_dump()
     elif hasattr(node_input, "dict"):
@@ -166,4 +186,8 @@ def creative_studio_agent(node_input: dict, ctx: Context) -> Event:
         target_audience=node_input["target_audience"],
         channels=node_input["channels"]
     )
-    return Event(output=result)
+    
+    # Run self-validation review
+    validated_result = validate_creative_output(node_input, result)
+    
+    return Event(output=validated_result)

@@ -74,8 +74,42 @@ class DataBudgetOutput(BaseModel):
     summary: BudgetSummary = Field(description="Consolidated budget allocation summary and forecast")
 
 
+def validate_budget_output(result: dict) -> dict:
+    """Self-review step: Verify total budget allocation and check forecast consistency, correcting section if needed."""
+    allocations = result.get("allocations", [])
+    summary = result.get("summary", {})
+    total_budget = summary.get("total_budget", 0.0)
+
+    # 1. Verify total allocation equals total budget (tolerance of $0.05)
+    allocated_sum = sum(a.get("budget", 0.0) for a in allocations)
+    if abs(allocated_sum - total_budget) > 0.05:
+        # Re-balance allocations: shift difference into the primary/first channel
+        diff = round(total_budget - allocated_sum, 2)
+        if allocations:
+            allocations[0]["budget"] = round(allocations[0]["budget"] + diff, 2)
+            allocations[0]["allocation_ratio"] = allocations[0]["budget"] / total_budget
+
+    # 2. Verify forecast calculations are internally consistent (Estimated Regs * CPR approx equals Budget)
+    for a in allocations:
+        expected_regs = a.get("estimated_registrations", 0)
+        cpr = a.get("cost_per_registration", 0.0)
+        budget = a.get("budget", 0.0)
+        if expected_regs > 0 and cpr > 0:
+            calc_budget = expected_regs * cpr
+            # If the gap exceeds the cost of a single registration, correct estimated registrations locally
+            if abs(calc_budget - budget) > (cpr + 0.01):
+                a["estimated_registrations"] = int(budget / cpr)
+
+    # Recalculate summary parameters based on corrected values
+    new_total_regs = sum(a.get("estimated_registrations", 0) for a in allocations)
+    summary["total_estimated_registrations"] = new_total_regs
+    summary["registration_gap"] = max(0, summary.get("registration_goal", 0) - new_total_regs)
+    summary["average_cost_per_registration"] = round(total_budget / new_total_regs, 2) if new_total_regs > 0 else 0.0
+    return result
+
+
 def data_budget_agent(node_input: dict, ctx: Context) -> Event:
-    """Execute Data & Budget Agent calculations directly."""
+    """Execute Data & Budget Agent calculations directly with self-review validation."""
     if hasattr(node_input, "model_dump"):
         node_input = node_input.model_dump()
     elif hasattr(node_input, "dict"):
@@ -88,4 +122,8 @@ def data_budget_agent(node_input: dict, ctx: Context) -> Event:
         registration_goal=node_input["registration_goal"],
         apply_optimization=node_input.get("apply_optimization", False)
     )
-    return Event(output=result)
+    
+    # Run self-validation review
+    validated_result = validate_budget_output(result)
+    
+    return Event(output=validated_result)

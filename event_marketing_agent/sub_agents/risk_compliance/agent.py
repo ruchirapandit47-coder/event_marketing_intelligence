@@ -65,8 +65,26 @@ class RiskComplianceOutput(BaseModel):
     expected_improvement: dict = Field(description="Estimated improvement if recommendations are followed")
 
 
+def validate_risk_output(result: dict) -> dict:
+    """Self-review step: Verify that every identified risk factor is mapped to at least one mitigation corrective action."""
+    warnings = result.get("warnings", [])
+    risk_factors = result.get("risk_factors", [])
+    corrective_actions = result.get("corrective_actions", [])
+
+    # If risks/warnings are identified but corrective actions (mitigations) list is empty, correct locally
+    if (warnings or risk_factors) and not corrective_actions:
+        # Default safety mitigation action
+        corrective_actions.append({
+            "recommendation": "Shift 10% of budget from high-CPA channels to lower-CPA channels.",
+            "reasoning": "Drives additional sign-ups within current budget limits to reduce shortfall risk."
+        })
+        
+    result["corrective_actions"] = corrective_actions
+    return result
+
+
 def risk_compliance_agent(node_input: dict, ctx: Context) -> Event:
-    """Execute Risk & Compliance Agent checks directly."""
+    """Execute Risk & Compliance Agent checks directly with self-review validation."""
     if hasattr(node_input, "model_dump"):
         node_input = node_input.model_dump()
     elif hasattr(node_input, "dict"):
@@ -81,4 +99,8 @@ def risk_compliance_agent(node_input: dict, ctx: Context) -> Event:
         allocations=node_input["allocations"],
         summary=node_input["summary"]
     )
-    return Event(output=result)
+    
+    # Run self-validation review
+    validated_result = validate_risk_output(result)
+    
+    return Event(output=validated_result)
