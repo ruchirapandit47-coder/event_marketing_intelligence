@@ -564,7 +564,7 @@ st.markdown("<div class='section-header'>🎨 Generated Campaign Assets (Creativ
 creative_conf = assets.get("messaging_alignment_confidence", 90.0)
 st.markdown(f"**Messaging Audience Alignment Confidence**: **{creative_conf}%**")
 st.progress(int(creative_conf))
-tab1, tab2, tab3, tab4 = st.tabs(["📧 Email Copy", "🔗 LinkedIn Posts", "📸 Instagram Captions", "💡 Ad Headlines"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["📧 Email Copy", "🔗 LinkedIn Posts", "📸 Instagram Captions", "💡 Ad Headlines", "📢 Channel Strategies"])
 
 with tab1:
     st.markdown("**Email Invitation Draft**")
@@ -594,6 +594,32 @@ with tab4:
         for cta in assets.get('call_to_action', []):
             st.markdown(f"- `{cta}`")
         st.markdown(f"*Recommended Hashtags*: {', '.join(assets.get('hashtags', []))}")
+
+with tab5:
+    st.markdown("**Tailored Channel Campaign Strategies**")
+    for strat in assets.get("channel_strategies", []):
+        ch = strat.get("channel") if isinstance(strat, dict) else strat.channel
+        obj = strat.get("campaign_objective") if isinstance(strat, dict) else strat.campaign_objective
+        per = strat.get("audience_persona") if isinstance(strat, dict) else strat.audience_persona
+        msg = strat.get("messaging_strategy") if isinstance(strat, dict) else strat.messaging_strategy
+        prop = strat.get("key_value_proposition") if isinstance(strat, dict) else strat.key_value_proposition
+        cta = strat.get("call_to_action") if isinstance(strat, dict) else strat.call_to_action
+        sched = strat.get("suggested_posting_schedule") if isinstance(strat, dict) else strat.suggested_posting_schedule
+        content = strat.get("platform_specific_content") if isinstance(strat, dict) else strat.platform_specific_content
+        kpis = strat.get("success_kpis") if isinstance(strat, dict) else strat.success_kpis
+        
+        with st.expander(f"📢 Strategy for: {ch}", expanded=True):
+            col_strat1, col_strat2 = st.columns(2)
+            with col_strat1:
+                st.markdown(f"🎯 **Campaign Objective**: {obj}")
+                st.markdown(f"👥 **Audience Persona**: {per}")
+                st.markdown(f"💬 **Messaging Strategy**: {msg}")
+                st.markdown(f"💡 **Key Value Proposition**: {prop}")
+            with col_strat2:
+                st.markdown(f"⚡ **Call to Action**: `{cta}`")
+                st.markdown(f"📅 **Posting Schedule**: {sched}")
+                st.markdown(f"📈 **Success KPIs**: {kpis}")
+                st.markdown(f"📝 **Ad Copy Draft**:  \n*{content}*")
 # Section: Approval Workflow
 st.markdown("<div class='section-header'>🔐 Campaign Approval Workflow</div>", unsafe_allow_html=True)
 

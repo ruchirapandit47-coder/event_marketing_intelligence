@@ -43,6 +43,20 @@ class StrategicRecommendation(BaseModel):
     reasoning: str = Field(description="Why this recommendation fits the target audience")
 
 
+class ChannelCreativeStrategy(BaseModel):
+    """Channel-specific campaign strategy and deliverables."""
+
+    channel: str = Field(description="Name of the marketing channel")
+    campaign_objective: str = Field(description="Specific objective for this channel")
+    audience_persona: str = Field(description="Target persona details for this channel")
+    messaging_strategy: str = Field(description="Tailored messaging strategy")
+    key_value_proposition: str = Field(description="Value proposition highlighted on this channel")
+    call_to_action: str = Field(description="Tailored call-to-action")
+    suggested_posting_schedule: str = Field(description="Posting frequency or timing suggestion")
+    platform_specific_content: str = Field(description="Actual copy or ad text draft for this platform")
+    success_kpis: str = Field(description="Primary tracking KPIs for this channel")
+
+
 class CreativeStudioOutput(BaseModel):
     """Structured copywriting assets produced by the Creative Studio Agent."""
 
@@ -63,6 +77,7 @@ class CreativeStudioOutput(BaseModel):
     google_ads_headline: StrategicRecommendation = Field(description="Google Ads headline and why it fits the selected audience")
     success_kpis: list[StrategicRecommendation] = Field(description="Success KPIs and why they fit the selected audience")
     messaging_alignment_confidence: float = Field(description="Confidence score that selected messaging aligns with target audience (0-100)")
+    channel_strategies: list[ChannelCreativeStrategy] = Field(default=[], description="Tailored strategies for every recommended channel")
 
 
 def mock_asset_generation(event_name, event_type, theme, target_audience, channels, risk_assessment=None):
@@ -70,6 +85,70 @@ def mock_asset_generation(event_name, event_type, theme, target_audience, channe
     risk_assessment = risk_assessment or {}
     risk_score = risk_assessment.get("risk_score", 0.0)
     warnings = risk_assessment.get("warnings", [])
+
+    # 0. Generate channel specific campaign strategies tailored to each selected channel
+    channel_strategies = []
+    for channel in channels:
+        if channel == "LinkedIn Ads":
+            channel_strategies.append({
+                "channel": channel,
+                "campaign_objective": "Drive professional/B2B registrations",
+                "audience_persona": f"B2B decision makers, managers, and {target_audience} interested in professional development",
+                "messaging_strategy": "Highlight peer-networking opportunities and commercial market reports.",
+                "key_value_proposition": "Direct networking with top builders and commercial developers.",
+                "call_to_action": "Confirm RSVP",
+                "suggested_posting_schedule": "Tuesday/Thursday mornings (mid-week business hours)",
+                "platform_specific_content": f"Connect with other {target_audience} leaders at {event_name}. Reserving your VIP passes today ensures early access to market briefings.",
+                "success_kpis": "Click-Through Rate (CTR) and Cost per Registration (<$85.00)"
+            })
+        elif channel == "Email Marketing":
+            channel_strategies.append({
+                "channel": channel,
+                "campaign_objective": "Re-engage warm leads and existing contacts",
+                "audience_persona": f"Subscribed network and warm contacts matching the profile of {target_audience}",
+                "messaging_strategy": "Personalized direct peer invitations and highlight key agenda topics.",
+                "key_value_proposition": "Get exclusive VIP entry and reserve limited-availability seats.",
+                "call_to_action": "Register Now",
+                "suggested_posting_schedule": "Wednesday mid-day newsletter dispatch",
+                "platform_specific_content": f"Dear Colleague, you're cordially invited to '{event_name}' to explore '{theme}'. Lock in your seats now.",
+                "success_kpis": "Open Rate (>20%) and Registration Click-Through Rate"
+            })
+        elif channel == "Google Search Ads":
+            channel_strategies.append({
+                "channel": channel,
+                "campaign_objective": "Capture high-intent searches on search queries",
+                "audience_persona": f"Prospects searching for event topics related to '{theme}' or '{event_name}'",
+                "messaging_strategy": "Direct search ads highlighting registration convenience and expert lineup.",
+                "key_value_proposition": "Fast registration for the premier event in the region.",
+                "call_to_action": "Book Tickets",
+                "suggested_posting_schedule": "Continuous query-triggered delivery (24/7 run)",
+                "platform_specific_content": f"{event_name} - Official Registration | Explore {theme[:25]} | Free Pass Booking",
+                "success_kpis": "Quality Score and CPA (Cost per Acquisition)"
+            })
+        elif channel == "Tech Newsletters":
+            channel_strategies.append({
+                "channel": channel,
+                "campaign_objective": "Build niche developer awareness through publication sponsorship",
+                "audience_persona": f"Technical leads and developers matching {target_audience}",
+                "messaging_strategy": "Developer-focused utility highlighting technical workshops.",
+                "key_value_proposition": "Hands-on tools and multi-agent ADK developer integrations.",
+                "call_to_action": "Get Developer Pass",
+                "suggested_posting_schedule": "Weekly Friday newsletter sponsor spot",
+                "platform_specific_content": f"Sponsoring this week's technical brief: Join leading developer minds at {event_name} to discuss '{theme}'.",
+                "success_kpis": "Newsletter referral traffic and signup volume"
+            })
+        else:
+            channel_strategies.append({
+                "channel": channel,
+                "campaign_objective": "Raise local community and brand awareness",
+                "audience_persona": f"General community members and local peers matching {target_audience}",
+                "messaging_strategy": "Localized social engagement highlighting local community benefits.",
+                "key_value_proposition": "Free event listing access and networking.",
+                "call_to_action": "Sign Up Free",
+                "suggested_posting_schedule": "Bi-weekly community posts",
+                "platform_specific_content": f"Find your dream solutions at {event_name} located at Pune Exhibition Center. Reserve free entry tickets.",
+                "success_kpis": "Impression count and ticket conversion rates"
+            })
 
     # 1. Campaign Theme (with fit rationale)
     campaign_theme_rec = f"Theme: '{theme}'"
@@ -162,7 +241,8 @@ def mock_asset_generation(event_name, event_type, theme, target_audience, channe
             f"Confirm RSVP (Exclusivity-based, fits curated calendar preferences)"
         ],
         "hashtags": [f"#{event_type.lower()}", f"#{theme.replace(' ', '').lower()}"],
-        "messaging_alignment_confidence": round(min(98.0, 85.0 + len(target_audience) * 0.2), 1)
+        "messaging_alignment_confidence": round(min(98.0, 85.0 + len(target_audience) * 0.2), 1),
+        "channel_strategies": channel_strategies
     }
 
 
@@ -220,7 +300,8 @@ def creative_studio_agent(node_input: dict, ctx: Context) -> Event:
         email_copy=validated_result["email_copy"],
         google_ads_headline=validated_result["google_ads_headline"],
         success_kpis=validated_result["success_kpis"],
-        messaging_alignment_confidence=validated_result["messaging_alignment_confidence"]
+        messaging_alignment_confidence=validated_result["messaging_alignment_confidence"],
+        channel_strategies=validated_result["channel_strategies"]
     )
     
     return Event(output=output_obj)
